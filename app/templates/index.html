@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Library</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="teal darken-2">
+        <div class="nav-wrapper container">
+            <a href="/" class="brand-logo">Music Library</a>
+            <ul class="right">
+                <li><a href="#" id="theme-toggle"><i class="material-icons">brightness_6</i></a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="flash-messages" style="display: none;">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div data-message="{{ message | e }}" data-category="{{ category }}"></div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="row">
+            <div class="col s12 m8 offset-m2">
+                <div class="card animate__animated animate__fadeIn">
+                    <div class="card-content">
+                        <span class="card-title">Create New Playlist</span>
+                        <form id="playlist-form" method="POST">
+                            <div class="input-field">
+                                <i class="material-icons prefix">link</i>
+                                <input type="text" id="url" name="url" required>
+                                <label for="url">Playlist URL</label>
+                            </div>
+                            <div class="input-field">
+                                <i class="material-icons prefix">music_note</i>
+                                <input type="text" id="playlist_name" name="playlist_name" required>
+                                <label for="playlist_name">Playlist Name</label>
+                            </div>
+                            <button type="submit" class="btn waves-effect waves-light teal darken-2" id="submit-btn">
+                                Download & Create
+                                <i class="material-icons right">send</i>
+                            </button>
+                        </form>
+                        <div id="progress" class="progress-container" style="display: none;">
+                            <h5>Download Progress</h5>
+                            <pre id="progress-output"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col s12 m8 offset-m2">
+                <div class="input-field">
+                    <i class="material-icons prefix">search</i>
+                    <input type="text" id="search" placeholder="Search songs by title or artist...">
+                </div>
+            </div>
+        </div>
+
+        <div class="row" id="songs-grid">
+            <h4>Songs</h4>
+            {% if songs %}
+                {% for song in songs %}
+                    <div class="col s12 m6 l4 song-card animate__animated animate__fadeInUp">
+                        <div class="card hoverable">
+                            <div class="card-content">
+                                <span class="card-title truncate">{{ song.title }}</span>
+                                <p><strong>Artist:</strong> {{ song.artist }}</p>
+                                <p><strong>Album:</strong> {{ song.album }}</p>
+                                <p class="truncate"><strong>File:</strong> {{ song.path_to_song }}</p>
+                            </div>
+                            <div class="card-action">
+                                <a href="{{ song.path_to_song }}" class="teal-text" target="_blank">Play</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col s12">
+                    <div class="card-panel grey lighten-3">
+                        <span>No songs found in the library.</span>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            M.updateTextFields();
+
+            const flashMessages = document.querySelectorAll('#flash-messages > div');
+            flashMessages.forEach(msg => {
+                const message = msg.dataset.message;
+                const category = msg.dataset.category;
+                M.toast({
+                    html: message,
+                    classes: category === 'success' ? 'teal lighten-2' : 'red lighten-2'
+                });
+            });
+
+            const searchInput = document.querySelector('#search');
+            const songCards = document.querySelectorAll('.song-card');
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                songCards.forEach(card => {
+                    const title = card.querySelector('.card-title').textContent.toLowerCase();
+                    const artist = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
+                    card.style.display = (title.includes(query) || artist.includes(query)) ? 'block' : 'none';
+                });
+            });
+
+            const themeToggle = document.querySelector('#theme-toggle');
+            themeToggle.addEventListener('click', function() {
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            });
+
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+
+            const form = document.querySelector('#playlist-form');
+            const submitBtn = document.querySelector('#submit-btn');
+            const progressContainer = document.querySelector('#progress');
+            const progressOutput = document.querySelector('#progress-output');
+            let source = null;
+            let isDownloading = false;
+
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                if (isDownloading) {
+                    M.toast({html: 'A download is already in progress.', classes: 'red lighten-2'});
+                    return;
+                }
+
+                const url = document.querySelector('#url').value;
+                if (!url) {
+                    M.toast({html: 'Please provide a playlist URL.', classes: 'red lighten-2'});
+                    return;
+                }
+
+                isDownloading = true;
+                submitBtn.classList.add('disabled');
+                progressContainer.style.display = 'block';
+                progressOutput.textContent = 'Starting download...\n';
+
+                if (source) {
+                    source.close();
+                }
+
+                source = new EventSource(`/download-progress?url=${encodeURIComponent(url)}`);
+                source.onmessage = function(event) {
+                    progressOutput.textContent += event.data + '\n';
+                    progressOutput.scrollTop = progressOutput.scrollHeight;
+                };
+                source.onerror = function() {
+                    progressOutput.textContent += 'Download completed or connection lost.\n';
+                    source.close();
+                    isDownloading = false;
+                    submitBtn.classList.remove('disabled');
+                    form.submit();
+                };
+                source.onopen = function() {
+                    progressOutput.textContent += 'Connected to download progress stream.\n';
+                };
+            });
+        });
+    </script>
+</body>
+</html>

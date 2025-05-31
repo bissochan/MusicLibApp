@@ -1,0 +1,27 @@
+/* Add to existing style.css */
+
+/* Progress Container */
+.progress-container {
+    margin-top: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.progress-container pre {
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+body.dark-mode .progress-container {
+    background-color: #424242;
+    border-color: #616161;
+}
+
+body.dark-mode .progress-container pre {
+    color: #e0e0e0;
+}

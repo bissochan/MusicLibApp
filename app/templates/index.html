@@ -37,16 +37,30 @@
                         <form id="playlist-form" method="POST">
                             <div class="input-field">
                                 <i class="material-icons prefix">link</i>
-                                <input type="text" id="url" name="url" required>
-                                <label for="url">Playlist URL</label>
+                                <input type="text" id="url" name="url">
+                                <label for="url">Playlist URL (optional if using download folder)</label>
                             </div>
                             <div class="input-field">
                                 <i class="material-icons prefix">music_note</i>
                                 <input type="text" id="playlist_name" name="playlist_name" required>
                                 <label for="playlist_name">Playlist Name</label>
                             </div>
+                            <div class="switch">
+                                <label>
+                                    <input type="checkbox" id="use_download_folder" name="use_download_folder">
+                                    <span class="lever"></span>
+                                    Use songs in download folder (skip spotdl)
+                                </label>
+                            </div>
+                            <div class="switch" style="margin-top: 10px;">
+                                <label>
+                                    <input type="checkbox" id="hide_progress" name="hide_progress">
+                                    <span class="lever"></span>
+                                    Hide download progress
+                                </label>
+                            </div>
                             <button type="submit" class="btn waves-effect waves-light teal darken-2" id="submit-btn">
-                                Download & Create
+                                Process & Create
                                 <i class="material-icons right">send</i>
                             </button>
                         </form>
@@ -137,8 +151,19 @@
             const submitBtn = document.querySelector('#submit-btn');
             const progressContainer = document.querySelector('#progress');
             const progressOutput = document.querySelector('#progress-output');
+            const useDownloadFolder = document.querySelector('#use_download_folder');
+            const hideProgress = document.querySelector('#hide_progress');
+            const urlInput = document.querySelector('#url');
             let source = null;
             let isDownloading = false;
+
+            // Disable URL input if using download folder
+            useDownloadFolder.addEventListener('change', function() {
+                urlInput.disabled = this.checked;
+                if (this.checked) {
+                    urlInput.value = '';
+                }
+            });
 
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
@@ -147,16 +172,25 @@
                     return;
                 }
 
-                const url = document.querySelector('#url').value;
-                if (!url) {
-                    M.toast({html: 'Please provide a playlist URL.', classes: 'red lighten-2'});
+                const url = urlInput.value;
+                const useDownload = useDownloadFolder.checked;
+                if (!useDownload && !url) {
+                    M.toast({html: 'Please provide a playlist URL or select use download folder.', classes: 'red lighten-2'});
                     return;
                 }
 
                 isDownloading = true;
                 submitBtn.classList.add('disabled');
-                progressContainer.style.display = 'block';
-                progressOutput.textContent = 'Starting download...\n';
+
+                if (!hideProgress.checked && !useDownload) {
+                    progressContainer.style.display = 'block';
+                    progressOutput.textContent = 'Starting download...\n';
+                }
+
+                if (useDownload) {
+                    form.submit();
+                    return;
+                }
 
                 if (source) {
                     source.close();
@@ -164,8 +198,10 @@
 
                 source = new EventSource(`/download-progress?url=${encodeURIComponent(url)}`);
                 source.onmessage = function(event) {
-                    progressOutput.textContent += event.data + '\n';
-                    progressOutput.scrollTop = progressOutput.scrollHeight;
+                    if (!hideProgress.checked) {
+                        progressOutput.textContent += event.data + '\n';
+                        progressOutput.scrollTop = progressOutput.scrollHeight;
+                    }
                 };
                 source.onerror = function() {
                     progressOutput.textContent += 'Download completed or connection lost.\n';
@@ -175,7 +211,9 @@
                     form.submit();
                 };
                 source.onopen = function() {
-                    progressOutput.textContent += 'Connected to download progress stream.\n';
+                    if (!hideProgress.checked) {
+                        progressOutput.textContent += 'Connected to download progress stream.\n';
+                    }
                 };
             });
         });

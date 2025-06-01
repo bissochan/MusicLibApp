@@ -47,24 +47,27 @@ def index():
     if request.method == "POST":
         url = request.form.get("url")
         playlist_name = request.form.get("playlist_name")
-        
-        if not url:
-            flash("Please provide a playlist URL.", "error")
-            logging.error("No playlist URL provided")
-            return redirect(url_for("index"))
+        use_download_folder = request.form.get("use_download_folder") == "on"
         
         if not playlist_name:
             flash("Please provide a playlist name.", "error")
             logging.error("No playlist name provided")
             return redirect(url_for("index"))
         
+        if not use_download_folder and not url:
+            flash("Please provide a playlist URL or select use download folder.", "error")
+            logging.error("No playlist URL provided and use_download_folder not selected")
+            return redirect(url_for("index"))
+        
         try:
-            logging.info("Starting download process")
-            # Download songs
-            script_manager = ScriptManager()
-            for line in script_manager.run_spotdl(url, DOWNLOAD_DIR):
-                print(line)
-                logging.info(line)
+            songs = []
+            if not use_download_folder:
+                logging.info("Starting download process")
+                # Download songs
+                script_manager = ScriptManager()
+                for line in script_manager.run_spotdl(url, DOWNLOAD_DIR):
+                    print(line)
+                    logging.info(line)
             
             logging.info("Organizing songs")
             # Organize songs and clean download folder
@@ -72,8 +75,8 @@ def index():
             songs = file_manager.add_to_library(DOWNLOAD_DIR)
             
             if not songs:
-                flash("No songs were downloaded or organized.", "error")
-                logging.error("No songs downloaded or organized")
+                flash("No songs were found to organize.", "error")
+                logging.error("No songs found in download folder")
                 return redirect(url_for("index"))
             
             logging.info(f"Creating playlist: {playlist_name}")

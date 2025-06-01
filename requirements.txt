@@ -2,3 +2,6 @@ flask
 sqlalchemy
 pytaglib
 flask-socketio
+pydantic-settings
+pytz
+spotdl

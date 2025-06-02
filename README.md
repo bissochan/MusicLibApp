@@ -1,49 +1,26 @@
-# MusicLibApp
+# Music Library Manager
 
-A Flask-based web application for managing music libraries and creating iTunes-compatible playlists.
+A Flask-based web app to organize MP3 files and create iTunes-compatible XML playlists. Download songs from playlist URLs (via `spotdl`), structure them by artist/album, include duplicates in playlists without re-adding, and preview up to three songs.
 
 ## Features
+- Organizes MP3s into `MusicLib/artist/album/`.
+- Includes duplicates in playlists using existing library paths.
+- Creates XML playlists with metadata (title, artist, album, etc.).
+- Web interface for downloading or processing files, with options to keep downloads.
+- Previews three songs for fast loading.
+- Cross-platform (Windows, macOS, Linux).
 
-- Download songs from supported platforms using spotdl
-- Organize music files with metadata into a structured library
-- Create iTunes-compatible XML playlists
-- Web interface with dark/light theme support
-- Search functionality for your music library
-- Real-time download progress monitoring
-
-## Requirements
-
-- Python 3.x
-- Flask
-- SQLAlchemy
-- PyTagLib
-- Flask-SocketIO
+## Prerequisites
+- Python 3.8+
+- FFmpeg (for `spotdl`):
+  - Ubuntu: `sudo apt-get install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Windows: Download from [ffmpeg.org](https://ffmpeg.org), add to PATH.
+- Git
 
 ## Installation
-
-1. Clone this repository
-2. Install requirements:
-```bash
-pip install -r requirements.txt
-```
-3. Create a `.env` file with the following variables:
-```
-download_dir=path/to/download/directory
-playlist_dir=path/to/playlist/directory
-music_lib_dir=path/to/music/library
-```
-
-## Usage
-
-1. Run the application:
-```bash
-python app/main.py
-```
-2. Open a web browser and navigate to `http://localhost:5000`
-3. Enter a playlist URL or use existing files in the download folder
-4. Provide a playlist name
-5. Click "Process & Create" to generate your playlist
-
-## License
-
-[Add your chosen license here]
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/music-library-manager.git
+   cd music-library-manager
+   python install.py

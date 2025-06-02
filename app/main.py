@@ -23,10 +23,11 @@ MUSIC_LIB_DIR = settings.music_lib_dir
 PLAYLIST_DIR = settings.playlist_dir
 
 def scan_music_library():
-    """Scan MusicLib directory for songs and extract metadata."""
+    """Scan MusicLib directory for songs and extract metadata, limiting to 3 songs."""
     songs = []
     music_path = Path(MUSIC_LIB_DIR)
-    for mp3_file in music_path.rglob("*.mp3"):
+    mp3_files = music_path.rglob("*.mp3")
+    for mp3_file in list(mp3_files)[:3]:  # Limit to first 3 songs
         try:
             with taglib.File(mp3_file) as file:
                 title = file.tags.get("TITLE", [mp3_file.stem])[0]
@@ -40,6 +41,7 @@ def scan_music_library():
             })
         except Exception as e:
             logging.error(f"Error scanning {mp3_file}: {e}")
+    logging.info(f"Scanned {len(songs)} songs for preview")
     return songs
 
 @app.route("/", methods=["GET", "POST"])
@@ -48,6 +50,7 @@ def index():
         url = request.form.get("url")
         playlist_name = request.form.get("playlist_name")
         use_download_folder = request.form.get("use_download_folder") == "on"
+        keep_download_files = request.form.get("keep_download_files") == "on"
         
         if not playlist_name:
             flash("Please provide a playlist name.", "error")
@@ -70,9 +73,9 @@ def index():
                     logging.info(line)
             
             logging.info("Organizing songs")
-            # Organize songs and clean download folder
+            # Organize songs
             file_manager = FileManager(MUSIC_LIB_DIR, DOWNLOAD_DIR)
-            songs = file_manager.add_to_library(DOWNLOAD_DIR)
+            songs = file_manager.add_to_library(DOWNLOAD_DIR, keep_download_files=keep_download_files)
             
             if not songs:
                 flash("No songs were found to organize.", "error")

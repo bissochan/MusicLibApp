@@ -25,6 +25,16 @@
                 </div>
             </div>
 
+            <!-- Settings Link -->
+            <div class="row">
+                <div class="col s12 center-align">
+                    <a href="/settings" class="btn waves-effect waves-light" style="margin-bottom: 1rem;">
+                        <i class="material-icons left">settings</i>
+                        Settings
+                    </a>
+                </div>
+            </div>
+
             <!-- Flash Messages -->
             <div id="flash-messages" style="display: none;">
                 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -87,6 +97,7 @@
                                 </div>
                                 
                                 <!-- Download Options -->
+                                {% if show_download_options %}
                                 <div class="form-section">
                                     <h6>Download Options</h6>
                                     <div class="switch">
@@ -104,6 +115,7 @@
                                         </label>
                                     </div>
                                 </div>
+                                {% endif %}
                                 
                                 <!-- Submit Button -->
                                 <button type="submit" class="btn waves-effect waves-light" id="submit-btn">

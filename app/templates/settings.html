@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Music Library Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle" id="theme-toggle">
+        <i class="material-icons" id="theme-icon">dark_mode</i>
+    </div>
+
+    <div class="main-container">
+        <div class="container">
+            <!-- Header -->
+            <div class="row">
+                <div class="col s12 center-align">
+                    <h1 class="white-text" style="font-weight: 700; margin-bottom: 0.5rem;">Settings</h1>
+                    <p class="white-text" style="opacity: 0.9; font-size: 1.1rem;">Configure your Music Library Manager</p>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="row">
+                <div class="col s12 center-align">
+                    <a href="/" class="btn waves-effect waves-light">
+                        <i class="material-icons left">arrow_back</i>
+                        Back to Main
+                    </a>
+                </div>
+            </div>
+
+            <!-- Flash Messages -->
+            <div id="flash-messages" style="display: none;">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div data-message="{{ message | e }}" data-category="{{ category }}"></div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Settings Form -->
+            <div class="row">
+                <div class="col s12 m10 offset-m1">
+                    <div class="card">
+                        <div class="card-content">
+                            <span class="card-title">Application Settings</span>
+                            
+                            <form id="settings-form">
+                                <!-- App Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Application Configuration</h6>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">settings</i>
+                                        <select id="app_mode" name="app_mode">
+                                            <option value="debug" {% if settings.app_mode.value == "debug" %}selected{% endif %}>Debug Mode</option>
+                                            <option value="deployed" {% if settings.app_mode.value == "deployed" %}selected{% endif %}>Deployed Mode</option>
+                                        </select>
+                                        <label for="app_mode">Application Mode</label>
+                                        <small class="helper-text">{{ settings.app_mode.description }}</small>
+                                    </div>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">folder</i>
+                                        <input type="text" id="root_folder" name="root_folder" value="{{ settings.root_folder.value }}">
+                                        <label for="root_folder">Root Folder</label>
+                                        <small class="helper-text">{{ settings.root_folder.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Download Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Download Configuration</h6>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">repeat</i>
+                                        <input type="number" id="max_download_retries" name="max_download_retries" 
+                                               value="{{ settings.max_download_retries.value }}" 
+                                               min="{{ settings.max_download_retries.min }}" 
+                                               max="{{ settings.max_download_retries.max }}">
+                                        <label for="max_download_retries">Max Download Retries</label>
+                                        <small class="helper-text">{{ settings.max_download_retries.description }}</small>
+                                    </div>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">timer</i>
+                                        <input type="number" id="download_timeout" name="download_timeout" 
+                                               value="{{ settings.download_timeout.value }}" 
+                                               min="{{ settings.download_timeout.min }}" 
+                                               max="{{ settings.download_timeout.max }}">
+                                        <label for="download_timeout">Download Timeout (seconds)</label>
+                                        <small class="helper-text">{{ settings.download_timeout.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="keep_download_files" name="keep_download_files" 
+                                                   {% if settings.keep_download_files.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Keep Download Files
+                                        </label>
+                                        <small class="helper-text">{{ settings.keep_download_files.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Library Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Library Configuration</h6>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="auto_organize" name="auto_organize" 
+                                                   {% if settings.auto_organize.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Auto Organize
+                                        </label>
+                                        <small class="helper-text">{{ settings.auto_organize.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="duplicate_check" name="duplicate_check" 
+                                                   {% if settings.duplicate_check.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Duplicate Check
+                                        </label>
+                                        <small class="helper-text">{{ settings.duplicate_check.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="create_artist_folders" name="create_artist_folders" 
+                                                   {% if settings.create_artist_folders.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Create Artist Folders
+                                        </label>
+                                        <small class="helper-text">{{ settings.create_artist_folders.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="create_album_folders" name="create_album_folders" 
+                                                   {% if settings.create_album_folders.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Create Album Folders
+                                        </label>
+                                        <small class="helper-text">{{ settings.create_album_folders.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Playlist Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Playlist Configuration</h6>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="auto_cleanup_after_playlist" name="auto_cleanup_after_playlist" 
+                                                   {% if settings.auto_cleanup_after_playlist.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Auto Cleanup After Playlist
+                                        </label>
+                                        <small class="helper-text">{{ settings.auto_cleanup_after_playlist.description }}</small>
+                                    </div>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">playlist_play</i>
+                                        <select id="playlist_format" name="playlist_format">
+                                            <option value="xml" {% if settings.playlist_format.value == "xml" %}selected{% endif %}>XML</option>
+                                            <option value="m3u" {% if settings.playlist_format.value == "m3u" %}selected{% endif %}>M3U</option>
+                                        </select>
+                                        <label for="playlist_format">Playlist Format</label>
+                                        <small class="helper-text">{{ settings.playlist_format.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- UI Configuration Section -->
+                                <div class="form-section">
+                                    <h6>User Interface</h6>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="show_progress_bar" name="show_progress_bar" 
+                                                   {% if settings.show_progress_bar.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Show Progress Bar
+                                        </label>
+                                        <small class="helper-text">{{ settings.show_progress_bar.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="enable_dark_mode" name="enable_dark_mode" 
+                                                   {% if settings.enable_dark_mode.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Enable Dark Mode
+                                        </label>
+                                        <small class="helper-text">{{ settings.enable_dark_mode.description }}</small>
+                                    </div>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">search</i>
+                                        <input type="number" id="max_search_results" name="max_search_results" 
+                                               value="{{ settings.max_search_results.value }}" 
+                                               min="{{ settings.max_search_results.min }}" 
+                                               max="{{ settings.max_search_results.max }}">
+                                        <label for="max_search_results">Max Search Results</label>
+                                        <small class="helper-text">{{ settings.max_search_results.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Logging Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Logging Configuration</h6>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">bug_report</i>
+                                        <select id="log_level" name="log_level">
+                                            <option value="DEBUG" {% if settings.log_level.value == "DEBUG" %}selected{% endif %}>DEBUG</option>
+                                            <option value="INFO" {% if settings.log_level.value == "INFO" %}selected{% endif %}>INFO</option>
+                                            <option value="WARNING" {% if settings.log_level.value == "WARNING" %}selected{% endif %}>WARNING</option>
+                                            <option value="ERROR" {% if settings.log_level.value == "ERROR" %}selected{% endif %}>ERROR</option>
+                                        </select>
+                                        <label for="log_level">Log Level</label>
+                                        <small class="helper-text">{{ settings.log_level.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="enable_console_logging" name="enable_console_logging" 
+                                                   {% if settings.enable_console_logging.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Enable Console Logging
+                                        </label>
+                                        <small class="helper-text">{{ settings.enable_console_logging.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Performance Configuration Section -->
+                                <div class="form-section">
+                                    <h6>Performance Configuration</h6>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">speed</i>
+                                        <input type="number" id="max_concurrent_downloads" name="max_concurrent_downloads" 
+                                               value="{{ settings.max_concurrent_downloads.value }}" 
+                                               min="{{ settings.max_concurrent_downloads.min }}" 
+                                               max="{{ settings.max_concurrent_downloads.max }}">
+                                        <label for="max_concurrent_downloads">Max Concurrent Downloads</label>
+                                        <small class="helper-text">{{ settings.max_concurrent_downloads.description }}</small>
+                                    </div>
+                                    
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="cache_metadata" name="cache_metadata" 
+                                                   {% if settings.cache_metadata.value %}checked{% endif %}>
+                                            <span class="lever"></span>
+                                            Cache Metadata
+                                        </label>
+                                        <small class="helper-text">{{ settings.cache_metadata.description }}</small>
+                                    </div>
+                                    
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">storage</i>
+                                        <input type="number" id="metadata_cache_size" name="metadata_cache_size" 
+                                               value="{{ settings.metadata_cache_size.value }}" 
+                                               min="{{ settings.metadata_cache_size.min }}" 
+                                               max="{{ settings.metadata_cache_size.max }}">
+                                        <label for="metadata_cache_size">Metadata Cache Size</label>
+                                        <small class="helper-text">{{ settings.metadata_cache_size.description }}</small>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="form-section">
+                                    <div class="row">
+                                        <div class="col s12 m6">
+                                            <button type="submit" class="btn waves-effect waves-light" id="save-btn">
+                                                <i class="material-icons left">save</i>
+                                                Save Settings
+                                            </button>
+                                        </div>
+                                        <div class="col s12 m6">
+                                            <button type="button" class="btn waves-effect waves-light red" id="reset-btn">
+                                                <i class="material-icons left">restore</i>
+                                                Reset to Defaults
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            M.updateTextFields();
+            M.FormSelect.init(document.querySelectorAll('select'));
+
+            // Theme management
+            const themeToggle = document.querySelector('#theme-toggle');
+            const themeIcon = document.querySelector('#theme-icon');
+            const body = document.body;
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            body.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            
+            // Theme toggle functionality
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = body.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                body.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+                
+                // Reinitialize Materialize components for new theme
+                M.updateTextFields();
+                M.FormSelect.init(document.querySelectorAll('select'));
+            });
+            
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    themeIcon.textContent = 'light_mode';
+                } else {
+                    themeIcon.textContent = 'dark_mode';
+                }
+            }
+
+            // Flash messages
+            const flashMessages = document.querySelectorAll('#flash-messages > div');
+            flashMessages.forEach(msg => {
+                const message = msg.dataset.message;
+                const category = msg.dataset.category;
+                M.toast({
+                    html: message,
+                    classes: category === 'success' ? 'green' : 'red',
+                    displayLength: 4000
+                });
+            });
+
+            // Settings form handling
+            const settingsForm = document.querySelector('#settings-form');
+            const saveBtn = document.querySelector('#save-btn');
+            const resetBtn = document.querySelector('#reset-btn');
+
+            settingsForm.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                saveBtn.innerHTML = '<span class="loading"></span> Saving...';
+                saveBtn.disabled = true;
+
+                try {
+                    const formData = new FormData(settingsForm);
+                    const settingsData = {};
+                    
+                    // Collect all form data
+                    for (let [key, value] of formData.entries()) {
+                        if (key === 'keep_download_files' || key === 'auto_organize' || 
+                            key === 'duplicate_check' || key === 'create_artist_folders' || 
+                            key === 'create_album_folders' || key === 'auto_cleanup_after_playlist' || 
+                            key === 'show_progress_bar' || key === 'enable_dark_mode' || 
+                            key === 'enable_console_logging' || key === 'cache_metadata') {
+                            settingsData[key] = value === 'on';
+                        } else {
+                            settingsData[key] = value;
+                        }
+                    }
+
+                    const response = await fetch('/api/settings', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(settingsData)
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        M.toast({html: 'Settings saved successfully!', classes: 'green'});
+                    } else {
+                        M.toast({html: result.error || 'Failed to save settings', classes: 'red'});
+                    }
+                } catch (error) {
+                    console.error('Error saving settings:', error);
+                    M.toast({html: 'Error saving settings', classes: 'red'});
+                } finally {
+                    saveBtn.innerHTML = '<i class="material-icons left">save</i>Save Settings';
+                    saveBtn.disabled = false;
+                }
+            });
+
+            resetBtn.addEventListener('click', async function() {
+                if (confirm('Are you sure you want to reset all settings to defaults? This action cannot be undone.')) {
+                    resetBtn.innerHTML = '<span class="loading"></span> Resetting...';
+                    resetBtn.disabled = true;
+
+                    try {
+                        const response = await fetch('/api/settings/reset', {
+                            method: 'POST'
+                        });
+
+                        const result = await response.json();
+                        
+                        if (response.ok) {
+                            M.toast({html: 'Settings reset to defaults!', classes: 'green'});
+                            // Reload page to show updated settings
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            M.toast({html: result.error || 'Failed to reset settings', classes: 'red'});
+                        }
+                    } catch (error) {
+                        console.error('Error resetting settings:', error);
+                        M.toast({html: 'Error resetting settings', classes: 'red'});
+                    } finally {
+                        resetBtn.innerHTML = '<i class="material-icons left">restore</i>Reset to Defaults';
+                        resetBtn.disabled = false;
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

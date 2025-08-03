@@ -9,6 +9,7 @@ import logging
 from app.services.file_manager import FileManager
 from app.services.playlist_manager import PlaylistManager
 from app.services.script_manager import ScriptManager
+from app.services.settings_manager import SettingsManager
 from app.config import settings
 import shutil
 
@@ -22,6 +23,9 @@ app.secret_key = "supersecretkey"
 DOWNLOAD_DIR = settings.download_dir
 MUSIC_LIB_DIR = settings.music_lib_dir
 PLAYLIST_DIR = settings.playlist_dir
+
+# Initialize settings manager
+settings_manager = SettingsManager()
 
 def search_library(query: str):
     """Search for songs in the library by title, artist, or album."""
@@ -325,7 +329,7 @@ def index():
         return redirect(url_for("index"))
     
     existing_playlists = get_existing_playlists()
-    return render_template("index.html", existing_playlists=existing_playlists)
+    return render_template("index.html", existing_playlists=existing_playlists, app_mode=settings.app_mode, show_download_options=settings.show_download_options)
 
 @app.route("/download-progress")
 def download_progress():
@@ -364,6 +368,61 @@ def api_playlists():
     """API endpoint to get existing playlists."""
     playlists = get_existing_playlists()
     return jsonify(playlists)
+
+@app.route("/settings")
+def settings_page():
+    """Settings page route."""
+    editable_settings = settings_manager.get_editable_settings()
+    return render_template("settings.html", settings=editable_settings, app_mode=settings.app_mode)
+
+@app.route("/api/settings", methods=["GET"])
+def api_get_settings():
+    """API endpoint to get current settings."""
+    editable_settings = settings_manager.get_editable_settings()
+    return jsonify(editable_settings)
+
+@app.route("/api/settings", methods=["POST"])
+def api_update_settings():
+    """API endpoint to update settings."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        results = settings_manager.update_multiple_settings(data)
+        success = all(results.values())
+        
+        if success:
+            # Save settings to file
+            settings_manager.save_to_file()
+            flash("Settings updated successfully!", "success")
+            return jsonify({"message": "Settings updated successfully", "results": results})
+        else:
+            failed_settings = [key for key, success in results.items() if not success]
+            flash(f"Failed to update some settings: {', '.join(failed_settings)}", "error")
+            return jsonify({"error": "Some settings failed to update", "results": results}), 400
+            
+    except Exception as e:
+        logging.error(f"Error updating settings: {e}")
+        flash(f"Error updating settings: {str(e)}", "error")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/settings/reset", methods=["POST"])
+def api_reset_settings():
+    """API endpoint to reset settings to defaults."""
+    try:
+        success = settings_manager.reset_to_defaults()
+        if success:
+            settings_manager.save_to_file()
+            flash("Settings reset to defaults!", "success")
+            return jsonify({"message": "Settings reset to defaults"})
+        else:
+            flash("Failed to reset settings", "error")
+            return jsonify({"error": "Failed to reset settings"}), 500
+    except Exception as e:
+        logging.error(f"Error resetting settings: {e}")
+        flash(f"Error resetting settings: {str(e)}", "error")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)

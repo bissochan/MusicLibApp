@@ -619,3 +619,119 @@ body {
 form {
     overflow: visible;
 }
+
+/* Fix text colors in dark mode for settings page */
+[data-theme="dark"] .card-title {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .form-section h6 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .input-field label {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .input-field input:focus + label,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) + label {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .input-field input {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .input-field input:focus {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .input-field .prefix {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .input-field input:focus ~ .prefix {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .switch label {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .helper-text {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .select-wrapper input.select-dropdown {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li > span {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li:hover > span {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li.selected > span {
+    color: white !important;
+}
+
+[data-theme="dark"] .select-wrapper .caret {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .select-wrapper input.select-dropdown:focus ~ .caret {
+    color: var(--primary-color) !important;
+}
+
+/* Fix button text colors in dark mode */
+[data-theme="dark"] .btn {
+    color: white !important;
+}
+
+[data-theme="dark"] .btn i {
+    color: white !important;
+}
+
+[data-theme="dark"] .btn.red {
+    color: white !important;
+}
+
+[data-theme="dark"] .btn.red i {
+    color: white !important;
+}
+
+/* Fix loading spinner in dark mode */
+[data-theme="dark"] .loading {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    border-top-color: white !important;
+}
+
+/* Fix form section spacing and colors */
+[data-theme="dark"] .form-section {
+    border-bottom: 1px solid var(--input-border);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+[data-theme="dark"] .form-section:last-child {
+    border-bottom: none;
+}
+
+/* Fix card content in dark mode */
+[data-theme="dark"] .card-content {
+    color: var(--text-primary) !important;
+}
+
+/* Fix small text and helper text in dark mode */
+[data-theme="dark"] small {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .helper-text {
+    color: var(--text-secondary) !important;
+    font-size: 0.8rem !important;
+    margin-top: 0.25rem !important;
+}

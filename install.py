@@ -5,6 +5,7 @@ import platform
 import venv
 from pathlib import Path
 import logging
+import shutil
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -23,18 +24,32 @@ def check_python_version():
         sys.exit(1)
     logging.info(f"Python version {current_version[0]}.{current_version[1]} is compatible.")
 
+def get_venv_python_path(venv_dir):
+    """Get the Python executable path for the virtual environment across all platforms."""
+    if platform.system() == "Windows":
+        return venv_dir / "Scripts" / "python.exe"
+    else:
+        return venv_dir / "bin" / "python"
+
+def get_venv_activate_path(venv_dir):
+    """Get the activation script path for the virtual environment across all platforms."""
+    if platform.system() == "Windows":
+        return venv_dir / "Scripts" / "activate.bat"
+    else:
+        return venv_dir / "bin" / "activate"
+
 def create_virtualenv():
     """Create a virtual environment in the project directory."""
     venv_dir = Path("venv")
     if venv_dir.exists():
         logging.info("Virtual environment already exists. Skipping creation.")
-        return str(venv_dir / "Scripts" / "python" if platform.system() == "Windows" else venv_dir / "bin" / "python")
+        return get_venv_python_path(venv_dir)
     
     logging.info("Creating virtual environment...")
     try:
         venv.create(venv_dir, with_pip=True)
         logging.info("Virtual environment created successfully.")
-        return str(venv_dir / "Scripts" / "python" if platform.system() == "Windows" else venv_dir / "bin" / "python")
+        return get_venv_python_path(venv_dir)
     except Exception as e:
         logging.error(f"Failed to create virtual environment: {e}")
         sys.exit(1)
@@ -49,9 +64,9 @@ def install_dependencies(python_exec):
     logging.info("Installing dependencies from requirements.txt...")
     try:
         # Upgrade pip
-        subprocess.check_call([python_exec, "-m", "pip", "install", "--upgrade", "pip"])
+        subprocess.check_call([str(python_exec), "-m", "pip", "install", "--upgrade", "pip"])
         # Install dependencies from requirements.txt
-        subprocess.check_call([python_exec, "-m", "pip", "install", "-r", str(requirements_file)])
+        subprocess.check_call([str(python_exec), "-m", "pip", "install", "-r", str(requirements_file)])
         logging.info("Dependencies installed successfully.")
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to install dependencies: {e}")
@@ -74,13 +89,14 @@ def create_env_file():
         str(project_root)
     )
 
-    # Ensure root directory is absolute
-    root_dir = str(Path(root_dir).resolve())
+    # Ensure root directory is absolute and handle path separators
+    root_path = Path(root_dir).resolve()
+    root_dir = str(root_path)
 
-    # Define subdirectories
-    download_dir = str(Path(root_dir) / DOWNLOAD_SUBDIR)
-    music_lib_dir = str(Path(root_dir) / MUSIC_LIB_SUBDIR)
-    playlist_dir = str(Path(root_dir) / PLAYLIST_SUBDIR)
+    # Define subdirectories using pathlib for cross-platform compatibility
+    download_dir = str(root_path / DOWNLOAD_SUBDIR)
+    music_lib_dir = str(root_path / MUSIC_LIB_SUBDIR)
+    playlist_dir = str(root_path / PLAYLIST_SUBDIR)
 
     # Create directories
     for dir_path in [download_dir, music_lib_dir, playlist_dir]:
@@ -91,7 +107,7 @@ def create_env_file():
             logging.error(f"Failed to create directory {dir_path}: {e}")
             sys.exit(1)
 
-    # Create .env content
+    # Create .env content with proper path separators
     env_content.append(f"DOWNLOAD_DIR={download_dir}")
     env_content.append(f"MUSIC_LIB_DIR={music_lib_dir}")
     env_content.append(f"PLAYLIST_DIR={playlist_dir}")
@@ -99,16 +115,34 @@ def create_env_file():
     # Write .env file
     env_file_path = project_root / ".env"
     try:
-        with open(env_file_path, "w") as f:
+        with open(env_file_path, "w", encoding='utf-8') as f:
             f.write("\n".join(env_content) + "\n")
         logging.info(f".env file created at {env_file_path}")
     except Exception as e:
         logging.error(f"Failed to create .env file: {e}")
         sys.exit(1)
 
+def get_shell_instructions():
+    """Get platform-specific shell activation instructions."""
+    system = platform.system()
+    if system == "Windows":
+        return {
+            "cmd": "venv\\Scripts\\activate.bat",
+            "powershell": "venv\\Scripts\\Activate.ps1",
+            "bash": "venv\\Scripts\\activate"
+        }
+    else:
+        return {
+            "bash": "source venv/bin/activate",
+            "zsh": "source venv/bin/activate",
+            "fish": "source venv/bin/activate.fish"
+        }
+
 def main():
     """Main installation function."""
     logging.info("Starting installation process...")
+    logging.info(f"Operating System: {platform.system()} {platform.release()}")
+    logging.info(f"Python Executable: {sys.executable}")
 
     # Check Python version
     check_python_version()
@@ -124,14 +158,28 @@ def main():
 
     logging.info("Installation completed successfully!")
     logging.info("To run the application:")
-    logging.info(f"1. Activate the virtual environment:")
-    if platform.system() == "Windows":
-        logging.info(f"   venv\\Scripts\\activate")
-    else:
-        logging.info(f"   source venv/bin/activate")
+    
+    # Get platform-specific activation instructions
+    shell_instructions = get_shell_instructions()
+    
+    logging.info("1. Activate the virtual environment:")
+    for shell, command in shell_instructions.items():
+        logging.info(f"   {shell}: {command}")
+    
     logging.info(f"2. Run the Flask app: {python_exec} app.py")
     logging.info("3. Open http://localhost:5000 in your browser.")
-    logging.info("Note: If using spotdl, ensure FFmpeg is installed. See https://ffmpeg.org/.")
+    
+    # Platform-specific notes
+    system = platform.system()
+    if system == "Windows":
+        logging.info("Note: If using PowerShell, you may need to set execution policy:")
+        logging.info("   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser")
+    elif system == "Darwin":  # macOS
+        logging.info("Note: If using spotdl, install FFmpeg with: brew install ffmpeg")
+    else:  # Linux
+        logging.info("Note: If using spotdl, install FFmpeg with: sudo apt install ffmpeg")
+    
+    logging.info("For FFmpeg installation on all platforms, see: https://ffmpeg.org/")
 
 if __name__ == "__main__":
     main()

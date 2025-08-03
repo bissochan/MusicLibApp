@@ -3,166 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Music Library</title>
+    <title>Music Library Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav class="teal darken-2">
-        <div class="nav-wrapper container">
-            <a href="/" class="brand-logo">Music Library</a>
-            <ul class="right">
-                <li><a href="#" id="theme-toggle"><i class="material-icons">brightness_6</i></a></li>
-            </ul>
-        </div>
-    </nav>
+    <!-- Theme Toggle Button -->
+    <div class="theme-toggle" id="theme-toggle">
+        <i class="material-icons" id="theme-icon">dark_mode</i>
+    </div>
 
-    <div class="container">
-        <div id="flash-messages" style="display: none;">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div data-message="{{ message | e }}" data-category="{{ category }}"></div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
+    <div class="main-container">
+        <div class="container">
+            <!-- Header -->
+            <div class="row">
+                <div class="col s12 center-align">
+                    <h1 class="white-text" style="font-weight: 700; margin-bottom: 0.5rem;">Music Library Manager</h1>
+                    <p class="white-text" style="opacity: 0.9; font-size: 1.1rem;">Organize your music collection with ease</p>
+                </div>
+            </div>
 
-        <div class="row">
-            <div class="col s12 m8 offset-m2">
-                <div class="card animate__animated animate__fadeIn">
-                    <div class="card-content">
-                        <span class="card-title">Create New Playlist</span>
-                        <form id="playlist-form" method="POST">
-                            <div class="input-field">
-                                <i class="material-icons prefix">link</i>
-                                <input type="text" id="url" name="url">
-                                <label for="url">Playlist URL (optional if using download folder)</label>
+            <!-- Flash Messages -->
+            <div id="flash-messages" style="display: none;">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div data-message="{{ message | e }}" data-category="{{ category }}"></div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Main Form -->
+            <div class="row">
+                <div class="col s12 m8 offset-m2">
+                    <div class="card">
+                        <div class="card-content">
+                            <span class="card-title">Download & Organize Music</span>
+                            
+                            <form id="playlist-form" method="POST">
+                                <!-- URL Input -->
+                                <div class="input-field">
+                                    <i class="material-icons prefix">link</i>
+                                    <input type="text" id="url" name="url">
+                                    <label for="url">Playlist URL (optional if using download folder)</label>
+                                </div>
+                                
+                                <!-- Playlist Options -->
+                                <div class="form-section">
+                                    <h6>Playlist Options</h6>
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="add_to_existing_playlist" name="add_to_existing_playlist">
+                                            <span class="lever"></span>
+                                            Add to existing playlist
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- New Playlist Name -->
+                                <div id="new-playlist-section">
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">music_note</i>
+                                        <input type="text" id="playlist_name" name="playlist_name">
+                                        <label for="playlist_name">New Playlist Name</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Existing Playlist Selection -->
+                                <div id="existing-playlist-section" style="display: none;">
+                                    <div class="input-field">
+                                        <i class="material-icons prefix">playlist_play</i>
+                                        <select id="existing_playlist_name" name="existing_playlist_name">
+                                            <option value="" disabled selected>Choose existing playlist</option>
+                                            {% for playlist in existing_playlists %}
+                                            <option value="{{ playlist.name }}">{{ playlist.name }} ({{ playlist.size }} bytes)</option>
+                                            {% endfor %}
+                                        </select>
+                                        <label>Existing Playlist</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Download Options -->
+                                <div class="form-section">
+                                    <h6>Download Options</h6>
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="use_download_folder" name="use_download_folder">
+                                            <span class="lever"></span>
+                                            Use songs in download folder (skip spotdl)
+                                        </label>
+                                    </div>
+                                    <div class="switch">
+                                        <label>
+                                            <input type="checkbox" id="keep_download_files" name="keep_download_files">
+                                            <span class="lever"></span>
+                                            Keep files in download folder
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Submit Button -->
+                                <button type="submit" class="btn waves-effect waves-light" id="submit-btn">
+                                    <span id="submit-text">Process & Create</span>
+                                    <i class="material-icons right">send</i>
+                                </button>
+                            </form>
+                            
+                            <!-- Progress Section -->
+                            <div id="progress" class="progress-container" style="display: none;">
+                                <h6>Download Progress</h6>
+                                <div class="progress-text" id="progress-text">Initializing...</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progress-fill"></div>
+                                </div>
+                                <div class="stats">
+                                    <div class="stat-item">
+                                        <span class="stat-number" id="songs-downloaded">0</span>
+                                        <span class="stat-label">Songs</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-number" id="progress-percentage">0%</span>
+                                        <span class="stat-label">Progress</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="input-field">
-                                <i class="material-icons prefix">music_note</i>
-                                <input type="text" id="playlist_name" name="playlist_name" required>
-                                <label for="playlist_name">Playlist Name</label>
-                            </div>
-                            <div class="switch">
-                                <label>
-                                    <input type="checkbox" id="use_download_folder" name="use_download_folder">
-                                    <span class="lever"></span>
-                                    Use songs in download folder (skip spotdl)
-                                </label>
-                            </div>
-                            <div class="switch" style="margin-top: 10px;">
-                                <label>
-                                    <input type="checkbox" id="hide_progress" name="hide_progress">
-                                    <span class="lever"></span>
-                                    Hide download progress
-                                </label>
-                            </div>
-                            <div class="switch" style="margin-top: 10px;">
-                                <label>
-                                    <input type="checkbox" id="keep_download_files" name="keep_download_files">
-                                    <span class="lever"></span>
-                                    Keep files in download folder
-                                </label>
-                            </div>
-                            <button type="submit" class="btn waves-effect waves-light teal darken-2" id="submit-btn">
-                                Process & Create
-                                <i class="material-icons right">send</i>
-                            </button>
-                        </form>
-                        <div id="progress" class="progress-container" style="display: none;">
-                            <h5>Download Progress</h5>
-                            <pre id="progress-output"></pre>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="row">
-            <div class="col s12 m8 offset-m2">
-                <div class="input-field">
-                    <i class="material-icons prefix">search</i>
-                    <input type="text" id="search" placeholder="Search songs by title or artist...">
+            <!-- Search Section -->
+            <div class="row">
+                <div class="col s12 m8 offset-m2">
+                    <div class="search-section">
+                        <h5 class="section-title">Search Library</h5>
+                        <div class="input-field">
+                            <i class="material-icons prefix">search</i>
+                            <input type="text" id="search-input" placeholder="Search for a song by title, artist, or album...">
+                            <label for="search-input">Search Library</label>
+                        </div>
+                        <button class="btn waves-effect waves-light" id="search-btn">
+                            <i class="material-icons left">search</i>
+                            Search
+                        </button>
+                        <div id="search-result" style="display: none;"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="row" id="songs-grid">
-            <h4>Songs</h4>
-            {% if songs %}
-                {% for song in songs %}
-                    <div class="col s12 m6 l4 song-card animate__animated animate__fadeInUp">
-                        <div class="card hoverable">
-                            <div class="card-content">
-                                <span class="card-title truncate">{{ song.title }}</span>
-                                <p><strong>Artist:</strong> {{ song.artist }}</p>
-                                <p><strong>Album:</strong> {{ song.album }}</p>
-                                <p class="truncate"><strong>File:</strong> {{ song.path_to_song }}</p>
-                            </div>
-                            <div class="card-action">
-                                <a href="{{ song.path_to_song }}" class="teal-text" target="_blank">Play</a>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <div class="col s12">
-                    <div class="card-panel grey lighten-3">
-                        <span>No songs found in the library.</span>
-                    </div>
-                </div>
-            {% endif %}
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             M.updateTextFields();
+            M.FormSelect.init(document.querySelectorAll('select'));
 
+            // Theme management
+            const themeToggle = document.querySelector('#theme-toggle');
+            const themeIcon = document.querySelector('#theme-icon');
+            const body = document.body;
+            
+            // Load saved theme
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            body.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            
+            // Theme toggle functionality
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = body.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                body.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+                
+                // Reinitialize Materialize components for new theme
+                M.updateTextFields();
+                M.FormSelect.init(document.querySelectorAll('select'));
+            });
+            
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    themeIcon.textContent = 'light_mode';
+                } else {
+                    themeIcon.textContent = 'dark_mode';
+                }
+            }
+
+            // Flash messages
             const flashMessages = document.querySelectorAll('#flash-messages > div');
             flashMessages.forEach(msg => {
                 const message = msg.dataset.message;
                 const category = msg.dataset.category;
                 M.toast({
                     html: message,
-                    classes: category === 'success' ? 'teal lighten-2' : 'red lighten-2'
+                    classes: category === 'success' ? 'green' : 'red',
+                    displayLength: 4000
                 });
             });
 
-            const searchInput = document.querySelector('#search');
-            const songCards = document.querySelectorAll('.song-card');
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                songCards.forEach(card => {
-                    const title = card.querySelector('.card-title').textContent.toLowerCase();
-                    const artist = card.querySelector('p:nth-child(2)').textContent.toLowerCase();
-                    card.style.display = (title.includes(query) || artist.includes(query)) ? 'block' : 'none';
-                });
+            // Search functionality
+            const searchInput = document.querySelector('#search-input');
+            const searchBtn = document.querySelector('#search-btn');
+            const searchResult = document.querySelector('#search-result');
+
+            searchBtn.addEventListener('click', async function() {
+                const query = searchInput.value.trim();
+                if (!query) {
+                    M.toast({html: 'Please enter a search term', classes: 'orange'});
+                    return;
+                }
+
+                searchBtn.innerHTML = '<span class="loading"></span> Searching...';
+                searchBtn.disabled = true;
+
+                try {
+                    const results = await performSearch(query);
+                    displaySearchResults(results);
+                } catch (error) {
+                    console.error('Search failed:', error);
+                    M.toast({html: 'Search failed', classes: 'red'});
+                } finally {
+                    searchBtn.innerHTML = '<i class="material-icons left">search</i>Search';
+                    searchBtn.disabled = false;
+                }
             });
 
-            const themeToggle = document.querySelector('#theme-toggle');
-            themeToggle.addEventListener('click', function() {
-                document.body.classList.toggle('dark-mode');
-                localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            });
-
-            if (localStorage.getItem('theme') === 'dark') {
-                document.body.classList.add('dark-mode');
+            function performSearch(query) {
+                // Make actual API call to backend
+                return fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+                        return data.results;
+                    })
+                    .catch(error => {
+                        console.error('Search error:', error);
+                        M.toast({html: 'Search failed: ' + error.message, classes: 'red'});
+                        return [];
+                    });
             }
 
+            function displaySearchResults(results) {
+                searchResult.style.display = 'block';
+                
+                if (results.length === 0) {
+                    searchResult.innerHTML = `
+                        <div class="search-result not-found">
+                            <h6>No songs found</h6>
+                            <p>No songs matching your search were found in the library.</p>
+                        </div>
+                    `;
+                } else {
+                    let html = '';
+                    results.forEach(song => {
+                        html += `
+                            <div class="search-result">
+                                <h6>${song.title}</h6>
+                                <p><strong>Artist:</strong> ${song.artist}</p>
+                                <p><strong>Album:</strong> ${song.album}</p>
+                                <p><strong>Location:</strong> ${song.path}</p>
+                            </div>
+                        `;
+                    });
+                    searchResult.innerHTML = html;
+                }
+            }
+
+            // Playlist option handling
+            const addToExistingCheckbox = document.querySelector('#add_to_existing_playlist');
+            const newPlaylistSection = document.querySelector('#new-playlist-section');
+            const existingPlaylistSection = document.querySelector('#existing-playlist-section');
+            const submitText = document.querySelector('#submit-text');
+            const playlistNameInput = document.querySelector('#playlist_name');
+            const existingPlaylistSelect = document.querySelector('#existing_playlist_name');
+
+            addToExistingCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    newPlaylistSection.style.display = 'none';
+                    existingPlaylistSection.style.display = 'block';
+                    submitText.textContent = 'Process & Add to Playlist';
+                    playlistNameInput.removeAttribute('required');
+                    existingPlaylistSelect.setAttribute('required', 'required');
+                } else {
+                    newPlaylistSection.style.display = 'block';
+                    existingPlaylistSection.style.display = 'none';
+                    submitText.textContent = 'Process & Create';
+                    playlistNameInput.setAttribute('required', 'required');
+                    existingPlaylistSelect.removeAttribute('required');
+                }
+                M.updateTextFields();
+                M.FormSelect.init(document.querySelectorAll('select'));
+            });
+
+            // Form handling
             const form = document.querySelector('#playlist-form');
             const submitBtn = document.querySelector('#submit-btn');
             const progressContainer = document.querySelector('#progress');
-            const progressOutput = document.querySelector('#progress-output');
+            const progressText = document.querySelector('#progress-text');
+            const progressFill = document.querySelector('#progress-fill');
+            const songsDownloaded = document.querySelector('#songs-downloaded');
+            const progressPercentage = document.querySelector('#progress-percentage');
             const useDownloadFolder = document.querySelector('#use_download_folder');
-            const hideProgress = document.querySelector('#hide_progress');
             const urlInput = document.querySelector('#url');
             let source = null;
             let isDownloading = false;
+            let downloadCount = 0;
+            let totalSongs = 0;
 
             // Disable URL input if using download folder
             useDownloadFolder.addEventListener('change', function() {
@@ -175,23 +328,40 @@
             form.addEventListener('submit', function(event) {
                 event.preventDefault();
                 if (isDownloading) {
-                    M.toast({html: 'A download is already in progress.', classes: 'red lighten-2'});
+                    M.toast({html: 'A download is already in progress.', classes: 'red'});
                     return;
                 }
 
                 const url = urlInput.value;
                 const useDownload = useDownloadFolder.checked;
+                const addToExisting = addToExistingCheckbox.checked;
+                
                 if (!useDownload && !url) {
-                    M.toast({html: 'Please provide a playlist URL or select use download folder.', classes: 'red lighten-2'});
+                    M.toast({html: 'Please provide a playlist URL or select use download folder.', classes: 'orange'});
+                    return;
+                }
+
+                if (!addToExisting && !playlistNameInput.value.trim()) {
+                    M.toast({html: 'Please provide a playlist name.', classes: 'orange'});
+                    return;
+                }
+
+                if (addToExisting && !existingPlaylistSelect.value) {
+                    M.toast({html: 'Please select an existing playlist.', classes: 'orange'});
                     return;
                 }
 
                 isDownloading = true;
                 submitBtn.classList.add('disabled');
+                downloadCount = 0;
+                totalSongs = 0;
 
-                if (!hideProgress.checked && !useDownload) {
+                if (!useDownload) {
                     progressContainer.style.display = 'block';
-                    progressOutput.textContent = 'Starting download...\n';
+                    progressText.textContent = 'Starting download...';
+                    progressFill.style.width = '0%';
+                    songsDownloaded.textContent = '0';
+                    progressPercentage.textContent = '0%';
                 }
 
                 if (useDownload) {
@@ -205,22 +375,65 @@
 
                 source = new EventSource(`/download-progress?url=${encodeURIComponent(url)}`);
                 source.onmessage = function(event) {
-                    if (!hideProgress.checked) {
-                        progressOutput.textContent += event.data + '\n';
-                        progressOutput.scrollTop = progressOutput.scrollHeight;
+                    const data = event.data;
+                    console.log('Progress data:', data);
+                    
+                    // Parse progress information
+                    if (data.includes('Downloading') || data.includes('downloading')) {
+                        downloadCount++;
+                        if (totalSongs === 0) {
+                            // Estimate total songs from first download
+                            totalSongs = Math.max(downloadCount + 5, 10);
+                        }
+                        
+                        const percentage = Math.min((downloadCount / totalSongs) * 100, 100);
+                        progressFill.style.width = percentage + '%';
+                        songsDownloaded.textContent = downloadCount;
+                        progressPercentage.textContent = Math.round(percentage) + '%';
+                        progressText.textContent = `Downloading song ${downloadCount}...`;
+                    } else if (data.includes('Downloaded') || data.includes('downloaded')) {
+                        progressText.textContent = data;
+                    } else if (data.includes('Found') || data.includes('found')) {
+                        const match = data.match(/(\d+) songs/);
+                        if (match) {
+                            totalSongs = parseInt(match[1]);
+                        }
+                    } else if (data.includes('Skipping') || data.includes('skipping')) {
+                        // Count skipped songs too
+                        downloadCount++;
+                        if (totalSongs === 0) {
+                            totalSongs = Math.max(downloadCount + 5, 10);
+                        }
+                        
+                        const percentage = Math.min((downloadCount / totalSongs) * 100, 100);
+                        progressFill.style.width = percentage + '%';
+                        songsDownloaded.textContent = downloadCount;
+                        progressPercentage.textContent = Math.round(percentage) + '%';
+                        progressText.textContent = `Processing song ${downloadCount}...`;
+                    } else if (data.includes('Processing') || data.includes('processing')) {
+                        downloadCount++;
+                        if (totalSongs === 0) {
+                            totalSongs = Math.max(downloadCount + 5, 10);
+                        }
+                        
+                        const percentage = Math.min((downloadCount / totalSongs) * 100, 100);
+                        progressFill.style.width = percentage + '%';
+                        songsDownloaded.textContent = downloadCount;
+                        progressPercentage.textContent = Math.round(percentage) + '%';
+                        progressText.textContent = `Processing song ${downloadCount}...`;
                     }
                 };
+                
                 source.onerror = function() {
-                    progressOutput.textContent += 'Download completed or connection lost.\n';
+                    progressText.textContent = 'Download completed or connection lost.';
                     source.close();
                     isDownloading = false;
                     submitBtn.classList.remove('disabled');
                     form.submit();
                 };
+                
                 source.onopen = function() {
-                    if (!hideProgress.checked) {
-                        progressOutput.textContent += 'Connected to download progress stream.\n';
-                    }
+                    progressText.textContent = 'Connected to download progress stream.';
                 };
             });
         });

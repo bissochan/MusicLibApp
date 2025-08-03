@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 import pytz
 import logging
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,11 +20,260 @@ class PlaylistManager:
             logging.error(f"Failed to create playlist directory {playlist_dir}: {e}")
             raise
 
-    def create_playlist_xml(self, songs: list, playlist_name: str):
+    def get_existing_playlists(self):
+        """Get list of existing playlists."""
+        playlists = []
+        try:
+            for file in Path(self.playlist_dir).glob("*.xml"):
+                playlists.append({
+                    'name': file.stem,
+                    'path': str(file),
+                    'size': file.stat().st_size
+                })
+            logging.info(f"Found {len(playlists)} existing playlists")
+        except Exception as e:
+            logging.error(f"Failed to get existing playlists: {e}")
+        return playlists
+
+    def read_playlist_songs(self, playlist_path: str):
+        """Read songs from an existing playlist XML file."""
+        songs = []
+        try:
+            tree = ET.parse(playlist_path)
+            root = tree.getroot()
+            
+            # Find tracks section
+            tracks_dict = None
+            for i, elem in enumerate(root.iter()):
+                if elem.tag == "key" and elem.text == "Tracks":
+                    # Get the next element which should be the tracks dict
+                    if i + 1 < len(list(root.iter())):
+                        tracks_dict = list(root.iter())[i + 1]
+                        if tracks_dict.tag == "dict":
+                            break
+            
+            if tracks_dict is None:
+                logging.warning(f"No tracks section found in {playlist_path}")
+                return songs
+            
+            # Extract song information from tracks
+            current_key = None
+            song_info = {}
+            
+            for elem in tracks_dict:
+                if elem.tag == "key":
+                    if song_info and current_key:  # Save previous song
+                        converted_song = self._convert_song_info(song_info)
+                        if converted_song:
+                            songs.append(converted_song)
+                        song_info = {}
+                    current_key = elem.text
+                elif elem.tag in ["string", "integer", "date"] and current_key:
+                    song_info[current_key] = elem.text
+            
+            # Don't forget the last song
+            if song_info and current_key:
+                converted_song = self._convert_song_info(song_info)
+                if converted_song:
+                    songs.append(converted_song)
+            
+            logging.info(f"Read {len(songs)} songs from playlist {playlist_path}")
+        except Exception as e:
+            logging.error(f"Failed to read playlist {playlist_path}: {e}")
+        
+        return songs
+
+    def _convert_song_info(self, song_info: dict):
+        """Convert song info from XML format to standard format."""
+        try:
+            return {
+                "title": song_info.get("Name", "Unknown Title"),
+                "artist": song_info.get("Artist", "AAAnonymus"),
+                "album": song_info.get("Album", "Singles"),
+                "path_to_song": song_info.get("Location", "").replace("file://localhost/", "").replace("file:///", ""),
+                "year": song_info.get("Year", "2024"),
+                "track_number": song_info.get("Track Number", "1"),
+                "duration": int(song_info.get("Total Time", 0)),
+                "bitrate": int(song_info.get("Bit Rate", 128)),
+                "sample_rate": int(song_info.get("Sample Rate", 48000)),
+                "size": int(song_info.get("Size", 0))
+            }
+        except Exception as e:
+            logging.warning(f"Failed to convert song info: {e}")
+            return None
+
+    def is_song_duplicate(self, new_song: dict, existing_songs: list):
+        """Check if a song is a duplicate based on title, artist, and album."""
+        new_title = new_song.get("title", "").lower().strip()
+        new_artist = new_song.get("artist", "").lower().strip()
+        new_album = new_song.get("album", "").lower().strip()
+        
+        for existing_song in existing_songs:
+            existing_title = existing_song.get("title", "").lower().strip()
+            existing_artist = existing_song.get("artist", "").lower().strip()
+            existing_album = existing_song.get("album", "").lower().strip()
+            
+            # Check if title, artist, and album match
+            if (new_title == existing_title and 
+                new_artist == existing_artist and 
+                new_album == existing_album):
+                return True
+        
+        return False
+
+    def add_songs_to_existing_playlist(self, songs: list, playlist_name: str):
+        """Add songs to an existing playlist, checking for duplicates."""
+        playlist_path = Path(self.playlist_dir) / f"{playlist_name}.xml"
+        
+        if not playlist_path.exists():
+            logging.error(f"Playlist {playlist_name} does not exist")
+            raise FileNotFoundError(f"Playlist {playlist_name} not found")
+        
+        try:
+            # Read existing playlist
+            existing_songs = self.read_playlist_songs(str(playlist_path))
+            logging.info(f"Found {len(existing_songs)} existing songs in playlist {playlist_name}")
+            
+            # Filter out duplicates
+            new_songs = []
+            duplicates_found = 0
+            
+            for song in songs:
+                if self.is_song_duplicate(song, existing_songs):
+                    logging.info(f"Duplicate found: {song.get('title', 'Unknown')} by {song.get('artist', 'Unknown')}")
+                    duplicates_found += 1
+                else:
+                    new_songs.append(song)
+            
+            if not new_songs:
+                logging.info(f"No new songs to add to playlist {playlist_name} (all were duplicates)")
+                return {
+                    'success': True,
+                    'message': f"No new songs added to '{playlist_name}' (all {len(songs)} songs were duplicates)",
+                    'added': 0,
+                    'duplicates': len(songs)
+                }
+            
+            # Update the existing playlist by adding new songs
+            self.update_playlist_with_new_songs(playlist_path, existing_songs, new_songs, playlist_name)
+            
+            total_songs = len(existing_songs) + len(new_songs)
+            logging.info(f"Added {len(new_songs)} new songs to playlist {playlist_name}")
+            return {
+                'success': True,
+                'message': f"Added {len(new_songs)} new songs to '{playlist_name}' ({duplicates_found} duplicates skipped). Total songs: {total_songs}",
+                'added': len(new_songs),
+                'duplicates': duplicates_found,
+                'total_songs': total_songs
+            }
+            
+        except Exception as e:
+            logging.error(f"Failed to add songs to playlist {playlist_name}: {e}")
+            raise
+
+    def update_playlist_with_new_songs(self, playlist_path: Path, existing_songs: list, new_songs: list, playlist_name: str):
+        """Update an existing playlist by adding new songs without recreating the entire structure."""
+        try:
+            # Parse the existing XML
+            tree = ET.parse(playlist_path)
+            root = tree.getroot()
+            
+            # Find the tracks section
+            tracks_dict = None
+            for i, elem in enumerate(root.iter()):
+                if elem.tag == "key" and elem.text == "Tracks":
+                    if i + 1 < len(list(root.iter())):
+                        tracks_dict = list(root.iter())[i + 1]
+                        if tracks_dict.tag == "dict":
+                            break
+            
+            if tracks_dict is None:
+                logging.error("No tracks section found in existing playlist")
+                raise ValueError("Invalid playlist format")
+            
+            # Find the playlists section
+            playlists_array = None
+            for i, elem in enumerate(root.iter()):
+                if elem.tag == "key" and elem.text == "Playlists":
+                    if i + 1 < len(list(root.iter())):
+                        playlists_array = list(root.iter())[i + 1]
+                        if playlists_array.tag == "array":
+                            break
+            
+            if playlists_array is None:
+                logging.error("No playlists section found in existing playlist")
+                raise ValueError("Invalid playlist format")
+            
+            # Get the first playlist dict (assuming single playlist)
+            playlist_dict = None
+            for elem in playlists_array:
+                if elem.tag == "dict":
+                    playlist_dict = elem
+                    break
+            
+            if playlist_dict is None:
+                logging.error("No playlist dict found")
+                raise ValueError("Invalid playlist format")
+            
+            # Find the playlist items array
+            items_array = None
+            for i, elem in enumerate(playlist_dict):
+                if elem.tag == "key" and elem.text == "Playlist Items":
+                    if i + 1 < len(list(playlist_dict)):
+                        items_array = list(playlist_dict)[i + 1]
+                        if items_array.tag == "array":
+                            break
+            
+            if items_array is None:
+                logging.error("No playlist items array found")
+                raise ValueError("Invalid playlist format")
+            
+            # Get the next available track ID
+            existing_track_ids = []
+            for elem in tracks_dict:
+                if elem.tag == "key":
+                    try:
+                        existing_track_ids.append(int(elem.text))
+                    except ValueError:
+                        continue
+            
+            next_track_id = max(existing_track_ids) + 1 if existing_track_ids else 100
+            
+            # Add new songs to tracks section
+            for song in new_songs:
+                # Add track entry
+                track_key = ET.SubElement(tracks_dict, "key")
+                track_key.text = str(next_track_id)
+                track_dict = ET.SubElement(tracks_dict, "dict")
+                self._add_track_metadata(track_dict, song, next_track_id)
+                
+                # Add playlist item
+                item_dict = ET.SubElement(items_array, "dict")
+                self._add_key_value(item_dict, "Track ID", "integer", str(next_track_id))
+                
+                next_track_id += 1
+            
+            # Write the updated XML
+            with open(playlist_path, "wb") as f:
+                f.write('<?xml version="1.0" encoding="UTF-8"?>\n'.encode('utf-8'))
+                f.write('<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'.encode('utf-8'))
+                tree.write(f, encoding="utf-8")
+            
+            logging.info(f"Updated playlist {playlist_name} with {len(new_songs)} new songs")
+            
+        except Exception as e:
+            logging.error(f"Failed to update playlist {playlist_path}: {e}")
+            raise
+
+    def create_playlist_xml(self, songs: list, playlist_name: str, is_update: bool = False):
         try:
             playlist_name = self.sanitize_filename(playlist_name or str(uuid.uuid4()))
             playlist_path = Path(self.playlist_dir) / f"{playlist_name}.xml"
-            logging.info(f"Creating playlist: {playlist_path}")
+            
+            if is_update:
+                logging.info(f"Updating playlist: {playlist_path}")
+            else:
+                logging.info(f"Creating playlist: {playlist_path}")
 
             # Create XML structure
             plist = ET.Element("plist")
@@ -87,7 +337,10 @@ class PlaylistManager:
                 f.write('<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'.encode('utf-8'))
                 tree.write(f, encoding="utf-8")
             
-            logging.info(f"XML Playlist '{playlist_name}.xml' created at {self.playlist_dir}")
+            if is_update:
+                logging.info(f"Updated playlist '{playlist_name}.xml' at {self.playlist_dir}")
+            else:
+                logging.info(f"XML Playlist '{playlist_name}.xml' created at {self.playlist_dir}")
         except Exception as e:
             logging.error(f"Failed to create playlist {playlist_path}: {e}")
             raise

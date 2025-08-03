@@ -1,27 +1,621 @@
-/* Add to existing style.css */
+:root {
+    --primary-color: #1e88e5;
+    --primary-dark: #1565c0;
+    --secondary-color: #f5f5f5;
+    --text-primary: #212121;
+    --text-secondary: #757575;
+    --success-color: #4caf50;
+    --error-color: #f44336;
+    --warning-color: #ff9800;
+    
+    /* Light theme colors */
+    --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --card-border: rgba(255, 255, 255, 0.2);
+    --search-bg: rgba(255, 255, 255, 0.9);
+    --progress-bg: rgba(255, 255, 255, 0.9);
+    --progress-border: rgba(255, 255, 255, 0.3);
+    --stat-bg: rgba(255, 255, 255, 0.1);
+    --input-border: #e0e0e0;
+    --input-focus-border: var(--primary-color);
+    --input-focus-shadow: rgba(30, 136, 229, 0.2);
+}
 
-/* Progress Container */
+/* Dark theme colors */
+[data-theme="dark"] {
+    --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    --card-bg: rgba(30, 30, 30, 0.95);
+    --card-border: rgba(255, 255, 255, 0.1);
+    --search-bg: rgba(30, 30, 30, 0.9);
+    --progress-bg: rgba(30, 30, 30, 0.9);
+    --progress-border: rgba(255, 255, 255, 0.1);
+    --stat-bg: rgba(255, 255, 255, 0.05);
+    --input-border: #444;
+    --input-focus-border: var(--primary-color);
+    --input-focus-shadow: rgba(30, 136, 229, 0.3);
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+}
+
+* {
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    transition: background 0.3s ease;
+}
+
+.main-container {
+    padding: 2rem 0;
+}
+
+.card {
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(10px);
+    background: var(--card-bg);
+    transition: all 0.3s ease;
+}
+
+.card-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.input-field {
+    margin-bottom: 1.5rem;
+}
+
+.input-field input, .input-field select {
+    border-radius: 8px;
+    border: 2px solid var(--input-border);
+    transition: all 0.3s ease;
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.input-field input:focus, .input-field select:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 2px var(--input-focus-shadow);
+}
+
+.input-field label {
+    color: var(--text-secondary);
+}
+
+.input-field input:focus + label,
+.input-field input:not(:placeholder-shown) + label {
+    color: var(--primary-color);
+}
+
+.switch {
+    margin-bottom: 1rem;
+}
+
+.switch label {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: none;
+    padding: 0 2rem;
+    height: 48px;
+    line-height: 48px;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn:disabled {
+    box-shadow: none;
+    transform: none;
+}
+
 .progress-container {
-    margin-top: 20px;
-    max-height: 200px;
-    overflow-y: auto;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
+    background: var(--progress-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+    border: 1px solid var(--progress-border);
+    transition: all 0.3s ease;
 }
 
-.progress-container pre {
-    white-space: pre-wrap;
+.progress-bar {
+    background: var(--input-border);
+    border-radius: 8px;
+    height: 8px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 8px;
+}
+
+.progress-text {
+    color: var(--text-secondary);
     font-size: 0.9rem;
-    color: #333;
+    margin-bottom: 0.5rem;
 }
 
-body.dark-mode .progress-container {
-    background-color: #424242;
-    border-color: #616161;
+.search-section {
+    background: var(--search-bg);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
 }
 
-body.dark-mode .progress-container pre {
-    color: #e0e0e0;
+.search-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+    transition: all 0.3s ease;
+}
+
+.search-result.not-found {
+    border-left-color: var(--warning-color);
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.search-result h6 {
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.search-result p {
+    margin: 0.25rem 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.section-title {
+    color: white;
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.toast {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.stats {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    background: var(--stat-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    text-align: center;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle i {
+    color: var(--text-primary);
+    font-size: 24px;
+    transition: all 0.3s ease;
+}
+
+/* Materialize overrides for dark mode */
+[data-theme="dark"] .input-field input,
+[data-theme="dark"] .input-field select {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .input-field input:focus,
+[data-theme="dark"] .input-field select:focus {
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .input-field input:focus + label,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) + label {
+    color: var(--primary-color);
+}
+
+[data-theme="dark"] .input-field input:focus ~ label,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) ~ label {
+    color: var(--primary-color);
+}
+
+/* Fix Materialize input labels in dark mode */
+[data-theme="dark"] .input-field label {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .input-field input:focus + label,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) + label,
+[data-theme="dark"] .input-field input:focus ~ label,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) ~ label {
+    color: var(--primary-color) !important;
+}
+
+/* Fix Materialize icons in dark mode */
+[data-theme="dark"] .input-field .prefix {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .input-field input:focus ~ .prefix,
+[data-theme="dark"] .input-field input:not(:placeholder-shown) ~ .prefix {
+    color: var(--primary-color) !important;
+}
+
+/* Fix Materialize select dropdown styling */
+.select-wrapper {
+    position: relative;
+    z-index: 10;
+    overflow: visible;
+}
+
+.select-wrapper input.select-dropdown {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--text-primary) !important;
+    border-radius: 8px !important;
+    padding: 0 40px 0 15px !important;
+    height: 3rem !important;
+    line-height: 3rem !important;
+    font-size: 1rem !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.select-wrapper input.select-dropdown:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15) !important;
+}
+
+.select-wrapper .dropdown-content {
+    background-color: var(--card-bg) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12) !important;
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    z-index: 1000 !important;
+    margin-top: 4px !important;
+    padding: 8px 0 !important;
+    backdrop-filter: blur(10px) !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.select-wrapper .dropdown-content li {
+    background-color: transparent !important;
+    border: none !important;
+    margin: 0 8px !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+.select-wrapper .dropdown-content li:last-child {
+    border-bottom: none !important;
+}
+
+.select-wrapper .dropdown-content li > span {
+    color: var(--text-primary) !important;
+    padding: 12px 16px !important;
+    font-size: 0.9rem !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease !important;
+}
+
+.select-wrapper .dropdown-content li:hover > span {
+    background-color: rgba(30, 136, 229, 0.08) !important;
+    color: var(--primary-color) !important;
+    transform: translateX(2px) !important;
+}
+
+.select-wrapper .dropdown-content li.selected > span {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.3) !important;
+}
+
+/* Fix dropdown arrow */
+.select-wrapper .caret {
+    color: var(--text-secondary) !important;
+    right: 15px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    transition: color 0.2s ease !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+.select-wrapper input.select-dropdown:focus ~ .caret {
+    color: var(--primary-color) !important;
+}
+
+/* Custom scrollbar for dropdown */
+.select-wrapper .dropdown-content::-webkit-scrollbar {
+    width: 6px !important;
+}
+
+.select-wrapper .dropdown-content::-webkit-scrollbar-track {
+    background: transparent !important;
+}
+
+.select-wrapper .dropdown-content::-webkit-scrollbar-thumb {
+    background: var(--input-border) !important;
+    border-radius: 3px !important;
+}
+
+.select-wrapper .dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary) !important;
+}
+
+/* Search section styling */
+.search-section {
+    position: relative;
+    z-index: 5;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--input-border);
+}
+
+.search-section .section-title {
+    color: var(--text-primary);
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+}
+
+/* Ensure proper spacing between form and search */
+.card {
+    margin-bottom: 2rem;
+}
+
+/* Fix form section spacing */
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section:last-child {
+    margin-bottom: 1rem;
+}
+
+/* Fix Materialize select dropdown in dark mode */
+[data-theme="dark"] .select-wrapper input.select-dropdown {
+    background-color: var(--input-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content {
+    background-color: var(--card-bg) !important;
+    border-color: var(--input-border) !important;
+    backdrop-filter: blur(15px) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li {
+    background-color: transparent !important;
+    border-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li > span {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li:hover > span {
+    background-color: rgba(30, 136, 229, 0.12) !important;
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content li.selected > span {
+    background-color: var(--primary-color) !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(30, 136, 229, 0.4) !important;
+}
+
+[data-theme="dark"] .select-wrapper .caret {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .select-wrapper input.select-dropdown:focus ~ .caret {
+    color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content::-webkit-scrollbar-thumb {
+    background: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .select-wrapper .dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-primary) !important;
+}
+
+/* Fix Materialize switches in dark mode */
+[data-theme="dark"] .switch label {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .switch .lever {
+    background-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .switch .lever:before {
+    background-color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .switch input:checked + .lever {
+    background-color: var(--primary-color) !important;
+}
+
+[data-theme="dark"] .switch input:checked + .lever:before {
+    background-color: white !important;
+}
+
+/* Fix Materialize buttons in dark mode */
+[data-theme="dark"] .btn {
+    color: white !important;
+}
+
+[data-theme="dark"] .btn i {
+    color: white !important;
+}
+
+/* Fix Materialize toasts in dark mode */
+[data-theme="dark"] .toast {
+    background-color: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Fix search results in dark mode */
+[data-theme="dark"] .search-result {
+    background: rgba(76, 175, 80, 0.2) !important;
+}
+
+[data-theme="dark"] .search-result.not-found {
+    background: rgba(255, 152, 0, 0.2) !important;
+}
+
+/* Fix progress text in dark mode */
+[data-theme="dark"] .progress-text {
+    color: var(--text-secondary) !important;
+}
+
+/* Fix card title in dark mode */
+[data-theme="dark"] .card-title {
+    color: var(--text-primary) !important;
+}
+
+/* Fix form section headers in dark mode */
+[data-theme="dark"] .form-section h6 {
+    color: var(--text-primary) !important;
+}
+
+/* Container constraints for dropdown */
+.input-field {
+    position: relative;
+    overflow: visible;
+}
+
+.input-field .select-wrapper {
+    position: relative;
+    overflow: visible;
+    max-width: 100%;
+}
+
+/* Ensure dropdown content stays within container */
+.select-wrapper .dropdown-content {
+    max-width: 100% !important;
+    min-width: 100% !important;
+    width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    position: absolute !important;
+    top: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Prevent horizontal overflow */
+.card {
+    overflow: visible;
+}
+
+.card-content {
+    overflow: visible;
+}
+
+/* Ensure form container doesn't clip dropdown */
+form {
+    overflow: visible;
 }

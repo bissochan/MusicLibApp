@@ -19,13 +19,16 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = "supersecretkey"
 
-# Directories from config
-DOWNLOAD_DIR = settings.download_dir
-MUSIC_LIB_DIR = settings.music_lib_dir
-PLAYLIST_DIR = settings.playlist_dir
-
 # Initialize settings manager
 settings_manager = SettingsManager()
+
+def get_directories():
+    """Get current directory paths from config (for dynamic updates)."""
+    return {
+        'download_dir': settings.download_dir,
+        'music_lib_dir': settings.music_lib_dir,
+        'playlist_dir': settings.playlist_dir
+    }
 
 def search_library(query: str):
     """Search for songs in the library by title, artist, or album."""
@@ -36,7 +39,9 @@ def search_library(query: str):
         return results
     
     try:
-        music_path = Path(MUSIC_LIB_DIR)
+        # Get current music library directory from config
+        current_music_lib_dir = settings.music_lib_dir
+        music_path = Path(current_music_lib_dir)
         if not music_path.exists():
             return results
             
@@ -78,13 +83,17 @@ def search_library(query: str):
 
 def get_existing_playlists():
     """Get list of existing playlists."""
-    playlist_manager = PlaylistManager(MUSIC_LIB_DIR, PLAYLIST_DIR)
+    # Get current playlist directory from config
+    current_playlist_dir = settings.playlist_dir
+    playlist_manager = PlaylistManager(settings.music_lib_dir, current_playlist_dir)
     return playlist_manager.get_existing_playlists()
 
 def cleanup_download_folder():
     """Clean up the download folder by removing all MP3 files and empty directories."""
     try:
-        download_path = Path(DOWNLOAD_DIR)
+        # Get current download directory from config
+        current_download_dir = settings.download_dir
+        download_path = Path(current_download_dir)
         if not download_path.exists():
             logging.info("Download folder does not exist, nothing to clean")
             return
@@ -114,12 +123,15 @@ def cleanup_download_folder():
 def find_song_in_library(title: str, artist: str, album: str) -> Path:
     """Find a song in the music library based on title, artist, and album."""
     try:
+        # Get current music library directory from config
+        current_music_lib_dir = settings.music_lib_dir
+        
         # Sanitize folder names
         artist_folder = sanitize_filename(artist) if artist != "AAAnonymus" else "AAAnonymus"
         album_folder = sanitize_filename(album) if album != "Singles" else "Singles"
         
         # Construct the expected library path
-        library_path = Path(MUSIC_LIB_DIR) / artist_folder / album_folder
+        library_path = Path(current_music_lib_dir) / artist_folder / album_folder
         
         if not library_path.exists():
             logging.info(f"Library path does not exist: {library_path}")
@@ -175,10 +187,10 @@ def index():
             logging.error("No existing playlist selected")
             return redirect(url_for("index"))
         
-        if not use_download_folder and not url:
-            flash("Please provide a playlist URL or select use download folder.", "error")
-            logging.error("No playlist URL provided and use_download_folder not selected")
-            return redirect(url_for("index"))
+        # If no URL is provided, automatically use download folder
+        if not url and not use_download_folder:
+            use_download_folder = True
+            logging.info("No URL provided, automatically using download folder")
         
         try:
             songs = []
@@ -186,14 +198,19 @@ def index():
                 logging.info("Starting download process")
                 # Download songs - run spotdl only once
                 script_manager = ScriptManager()
-                spotdl_generator = script_manager.run_spotdl(url, DOWNLOAD_DIR)
+                # Get current download directory from config
+                current_download_dir = settings.download_dir
+                spotdl_generator = script_manager.run_spotdl(url, current_download_dir)
                 for line in spotdl_generator:
-                    print(line)
+                    
                     logging.info(line)
             
             logging.info("Organizing songs")
             # Organize songs
-            file_manager = FileManager(MUSIC_LIB_DIR, DOWNLOAD_DIR)
+            # Get current directories from config
+            current_music_lib_dir = settings.music_lib_dir
+            current_download_dir = settings.download_dir
+            file_manager = FileManager(current_music_lib_dir, current_download_dir)
             
             # For existing playlists, we want to keep the files even if they're duplicates
             # so we can still add them to the playlist
@@ -202,17 +219,18 @@ def index():
             else:
                 keep_files_for_playlist = keep_download_files
                 
-            songs = file_manager.add_to_library(DOWNLOAD_DIR, keep_download_files=keep_files_for_playlist)
+            songs = file_manager.add_to_library(current_download_dir, keep_download_files=keep_files_for_playlist)
             
             # Handle playlist creation or addition
-            playlist_manager = PlaylistManager(MUSIC_LIB_DIR, PLAYLIST_DIR)
+            current_playlist_dir = settings.playlist_dir
+            playlist_manager = PlaylistManager(current_music_lib_dir, current_playlist_dir)
             
             if add_to_existing_playlist:
                 # For existing playlists, we want to add songs even if they're duplicates in the library
                 # because they might not be in the playlist yet
                 if not songs:
                     # If no songs were added to library (all duplicates), try to get them from download folder
-                    download_songs = list(Path(DOWNLOAD_DIR).glob("*.mp3"))
+                    download_songs = list(Path(current_download_dir).glob("*.mp3"))
                     logging.info(f"Found {len(download_songs)} files in download folder to process for playlist")
                     if download_songs:
                         # Create song objects from download folder for playlist addition
@@ -269,7 +287,7 @@ def index():
                 # even if they're duplicates in the library
                 if not songs:
                     # If no songs were added to library (all duplicates), try to get them from download folder
-                    download_songs = list(Path(DOWNLOAD_DIR).glob("*.mp3"))
+                    download_songs = list(Path(current_download_dir).glob("*.mp3"))
                     logging.info(f"Found {len(download_songs)} files in download folder to process for new playlist")
                     if download_songs:
                         # Create song objects from download folder for playlist creation
@@ -340,7 +358,9 @@ def download_progress():
             return
         try:
             script_manager = ScriptManager()
-            for line in script_manager.run_spotdl(url, DOWNLOAD_DIR):
+            # Get current download directory from config
+            current_download_dir = settings.download_dir
+            for line in script_manager.run_spotdl(url, current_download_dir):
                 yield f"data: {line}\n\n"
         except Exception as e:
             yield f"data: Error: {str(e)}\n\n"
@@ -355,19 +375,68 @@ def api_search():
     if not query:
         return jsonify({"error": "No search query provided"}), 400
     
-    results = search_library(query)
-    
-    return jsonify({
-        "query": query,
-        "results": results,
-        "count": len(results)
-    })
+    try:
+        results = search_library(query)
+        
+        return jsonify({
+            "query": query,
+            "results": results,
+            "count": len(results)
+        })
+    except Exception as e:
+        logging.error(f"Search error: {e}")
+        return jsonify({"error": f"Search failed: {str(e)}"}), 500
 
 @app.route("/api/playlists")
 def api_playlists():
     """API endpoint to get existing playlists."""
-    playlists = get_existing_playlists()
-    return jsonify(playlists)
+    try:
+        playlists = get_existing_playlists()
+        return jsonify(playlists)
+    except Exception as e:
+        logging.error(f"Error getting playlists: {e}")
+        return jsonify({"error": f"Failed to get playlists: {str(e)}"}), 500
+
+@app.route("/api/playlists/refresh", methods=["POST"])
+def api_refresh_playlists():
+    """API endpoint to refresh playlists after operations."""
+    try:
+        playlists = get_existing_playlists()
+        return jsonify({
+            "success": True,
+            "playlists": playlists,
+            "message": "Playlists refreshed successfully"
+        })
+    except Exception as e:
+        logging.error(f"Error refreshing playlists: {e}")
+        return jsonify({"error": f"Failed to refresh playlists: {str(e)}"}), 500
+
+@app.route("/api/playlists/<playlist_name>")
+def api_get_playlist_details(playlist_name):
+    """API endpoint to get details of a specific playlist."""
+    try:
+        # Get current directories from config
+        current_music_lib_dir = settings.music_lib_dir
+        current_playlist_dir = settings.playlist_dir
+        playlist_manager = PlaylistManager(current_music_lib_dir, current_playlist_dir)
+        playlist_path = Path(current_playlist_dir) / f"{playlist_name}.xml"
+        
+        if not playlist_path.exists():
+            return jsonify({"error": f"Playlist '{playlist_name}' not found"}), 404
+        
+        songs = playlist_manager.read_playlist_songs(str(playlist_path))
+        playlist_info = {
+            "name": playlist_name,
+            "path": str(playlist_path),
+            "size": playlist_path.stat().st_size,
+            "song_count": len(songs),
+            "songs": songs
+        }
+        
+        return jsonify(playlist_info)
+    except Exception as e:
+        logging.error(f"Error getting playlist details for {playlist_name}: {e}")
+        return jsonify({"error": f"Failed to get playlist details: {str(e)}"}), 500
 
 @app.route("/settings")
 def settings_page():
@@ -424,8 +493,38 @@ def api_reset_settings():
         flash(f"Error resetting settings: {str(e)}", "error")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/paths")
+def api_get_paths():
+    """API endpoint to get current resolved paths for debugging."""
+    try:
+        # Get current directories from config
+        current_download_dir = settings.download_dir
+        current_playlist_dir = settings.playlist_dir
+        current_music_lib_dir = settings.music_lib_dir
+        
+        paths = {
+            "root_folder": settings.root_folder,
+            "download_dir": current_download_dir,
+            "playlist_dir": current_playlist_dir,
+            "music_lib_dir": current_music_lib_dir,
+            "resolved": {
+                "download_dir": str(Path(current_download_dir).resolve()),
+                "playlist_dir": str(Path(current_playlist_dir).resolve()),
+                "music_lib_dir": str(Path(current_music_lib_dir).resolve())
+            }
+        }
+        return jsonify(paths)
+    except Exception as e:
+        logging.error(f"Error getting paths: {e}")
+        return jsonify({"error": f"Failed to get paths: {str(e)}"}), 500
+
 if __name__ == "__main__":
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    os.makedirs(MUSIC_LIB_DIR, exist_ok=True)
-    os.makedirs(PLAYLIST_DIR, exist_ok=True)
+    # Get current directories from config
+    current_download_dir = settings.download_dir
+    current_music_lib_dir = settings.music_lib_dir
+    current_playlist_dir = settings.playlist_dir
+    
+    os.makedirs(current_download_dir, exist_ok=True)
+    os.makedirs(current_music_lib_dir, exist_ok=True)
+    os.makedirs(current_playlist_dir, exist_ok=True)
     app.run(debug=True)

@@ -1,0 +1,17 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+*.mp3
+downloads/
+music_library/
+playlists/
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+README.md

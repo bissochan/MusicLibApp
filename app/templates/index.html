@@ -32,6 +32,10 @@
                         <i class="material-icons left">settings</i>
                         Settings
                     </a>
+                    <button class="btn waves-effect waves-light" id="show-paths-btn" style="margin-bottom: 1rem; margin-left: 10px;">
+                        <i class="material-icons left">folder</i>
+                        Show Paths
+                    </button>
                 </div>
             </div>
 
@@ -58,7 +62,7 @@
                                 <div class="input-field">
                                     <i class="material-icons prefix">link</i>
                                     <input type="text" id="url" name="url">
-                                    <label for="url">Playlist URL (optional if using download folder)</label>
+                                    <label for="url">Playlist URL (optional - will use download folder if not provided)</label>
                                 </div>
                                 
                                 <!-- Playlist Options -->
@@ -93,6 +97,12 @@
                                             {% endfor %}
                                         </select>
                                         <label>Existing Playlist</label>
+                                    </div>
+                                    <div class="playlist-actions" style="margin-top: 10px;">
+                                        <button type="button" class="btn-small waves-effect waves-light" id="view-playlist-btn">
+                                            <i class="material-icons left">visibility</i>
+                                            View Details
+                                        </button>
                                     </div>
                                 </div>
                                 
@@ -174,6 +184,16 @@
             M.updateTextFields();
             M.FormSelect.init(document.querySelectorAll('select'));
 
+            // Initialize playlists on page load
+            initializePlaylists();
+
+            // Check for flash messages and refresh playlists if needed
+            checkForFlashMessages();
+
+            // Show paths button functionality
+            const showPathsBtn = document.querySelector('#show-paths-btn');
+            showPathsBtn.addEventListener('click', showCurrentPaths);
+
             // Theme management
             const themeToggle = document.querySelector('#theme-toggle');
             const themeIcon = document.querySelector('#theme-icon');
@@ -245,10 +265,22 @@
                 }
             });
 
+            // Add search on Enter key
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchBtn.click();
+                }
+            });
+
             function performSearch(query) {
                 // Make actual API call to backend
                 return fetch(`/api/search?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         if (data.error) {
                             throw new Error(data.error);
@@ -295,6 +327,160 @@
             const submitText = document.querySelector('#submit-text');
             const playlistNameInput = document.querySelector('#playlist_name');
             const existingPlaylistSelect = document.querySelector('#existing_playlist_name');
+            const viewPlaylistBtn = document.querySelector('#view-playlist-btn');
+
+            // Function to refresh playlists
+            async function refreshPlaylists() {
+                try {
+                    const response = await fetch('/api/playlists/refresh', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        // Update the existing playlist select options
+                        updatePlaylistOptions(data.playlists);
+                        M.toast({html: 'Playlists refreshed successfully', classes: 'green'});
+                    } else {
+                        throw new Error(data.error || 'Failed to refresh playlists');
+                    }
+                } catch (error) {
+                    console.error('Failed to refresh playlists:', error);
+                    M.toast({html: 'Failed to refresh playlists: ' + error.message, classes: 'red'});
+                }
+            }
+
+            // Function to initialize playlists on page load
+            async function initializePlaylists() {
+                try {
+                    const response = await fetch('/api/playlists');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const playlists = await response.json();
+                    if (Array.isArray(playlists)) {
+                        updatePlaylistOptions(playlists);
+                    } else {
+                        console.warn('Unexpected playlist data format:', playlists);
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize playlists:', error);
+                    // Don't show error toast on page load, just log it
+                }
+            }
+
+            // Function to check for flash messages and refresh playlists if needed
+            function checkForFlashMessages() {
+                const flashMessages = document.querySelectorAll('#flash-messages > div');
+                if (flashMessages.length > 0) {
+                    // If there are flash messages, it means an operation was completed
+                    // Refresh playlists after a short delay to show updated data
+                    setTimeout(() => {
+                        refreshPlaylists();
+                    }, 1000);
+                }
+            }
+
+            // Function to show current paths
+            async function showCurrentPaths() {
+                try {
+                    const response = await fetch('/api/paths');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const paths = await response.json();
+                    displayPathsModal(paths);
+                } catch (error) {
+                    console.error('Failed to get paths:', error);
+                    M.toast({html: 'Failed to get paths: ' + error.message, classes: 'red'});
+                }
+            }
+
+            // Function to display paths in modal
+            function displayPathsModal(paths) {
+                let modalContent = `
+                    <div class="modal-content">
+                        <h4>Current Folder Configuration</h4>
+                        <div class="paths-info">
+                            <p><strong>Root Folder:</strong> ${paths.root_folder}</p>
+                            <p><strong>Download Directory:</strong> ${paths.download_dir}</p>
+                            <p><strong>Playlist Directory:</strong> ${paths.playlist_dir}</p>
+                            <p><strong>Music Library Directory:</strong> ${paths.music_lib_dir}</p>
+                        </div>
+                        <div class="resolved-paths">
+                            <h5>Resolved Paths:</h5>
+                            <p><strong>Download:</strong> ${paths.resolved.download_dir}</p>
+                            <p><strong>Playlists:</strong> ${paths.resolved.playlist_dir}</p>
+                            <p><strong>Music Library:</strong> ${paths.resolved.music_lib_dir}</p>
+                        </div>
+                        <div class="paths-help">
+                            <h5>How to change paths:</h5>
+                            <p>1. Go to <strong>Settings</strong> page</p>
+                            <p>2. Change the <strong>Root Folder</strong> to your desired location</p>
+                            <p>3. The other paths will automatically update relative to the root folder</p>
+                            <p>4. Or set absolute paths if you prefer</p>
+                        </div>
+                    </div>
+                `;
+                
+                // Create and show modal
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = modalContent;
+                document.body.appendChild(modal);
+                
+                const instance = M.Modal.init(modal);
+                instance.open();
+                
+                // Clean up modal when closed
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        instance.close();
+                        setTimeout(() => {
+                            document.body.removeChild(modal);
+                        }, 300);
+                    }
+                });
+            }
+
+            // Function to update playlist options
+            function updatePlaylistOptions(playlists) {
+                const select = document.querySelector('#existing_playlist_name');
+                const currentValue = select.value;
+                
+                // Clear existing options
+                select.innerHTML = '<option value="" disabled selected>Choose existing playlist</option>';
+                
+                // Add new options
+                playlists.forEach(playlist => {
+                    const option = document.createElement('option');
+                    option.value = playlist.name;
+                    option.textContent = `${playlist.name} (${playlist.size} bytes)`;
+                    select.appendChild(option);
+                });
+                
+                // Restore previous selection if it still exists
+                if (currentValue) {
+                    const option = select.querySelector(`option[value="${currentValue}"]`);
+                    if (option) {
+                        option.selected = true;
+                    }
+                }
+                
+                // Reinitialize Materialize select
+                M.FormSelect.init(select);
+            }
 
             addToExistingCheckbox.addEventListener('change', function() {
                 if (this.checked) {
@@ -303,6 +489,9 @@
                     submitText.textContent = 'Process & Add to Playlist';
                     playlistNameInput.removeAttribute('required');
                     existingPlaylistSelect.setAttribute('required', 'required');
+                    
+                    // Automatically refresh playlists when opening the dropdown
+                    refreshPlaylists();
                 } else {
                     newPlaylistSection.style.display = 'block';
                     existingPlaylistSection.style.display = 'none';
@@ -313,6 +502,122 @@
                 M.updateTextFields();
                 M.FormSelect.init(document.querySelectorAll('select'));
             });
+
+            // Update submit button text based on URL input
+            urlInput.addEventListener('input', function() {
+                if (!this.value.trim()) {
+                    submitText.textContent = 'Process & Create from Download Folder';
+                } else {
+                    submitText.textContent = 'Process & Create';
+                }
+            });
+
+            // Add click event to the select to refresh playlists when opened
+            existingPlaylistSelect.addEventListener('click', function() {
+                // Refresh playlists when the dropdown is clicked
+                refreshPlaylists();
+            });
+
+            viewPlaylistBtn.addEventListener('click', function() {
+                const playlistName = existingPlaylistSelect.value;
+                if (playlistName) {
+                    viewPlaylistDetails(playlistName);
+                } else {
+                    M.toast({html: 'Please select a playlist to view details.', classes: 'orange'});
+                }
+            });
+
+            // Function to view playlist details
+            async function viewPlaylistDetails(playlistName) {
+                try {
+                    const response = await fetch(`/api/playlists/${encodeURIComponent(playlistName)}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const playlist = await response.json();
+                    displayPlaylistDetails(playlist);
+                } catch (error) {
+                    console.error('Failed to get playlist details:', error);
+                    M.toast({html: 'Failed to get playlist details: ' + error.message, classes: 'red'});
+                }
+            }
+
+            // Function to display playlist details
+            function displayPlaylistDetails(playlist) {
+                // Create modal content
+                let modalContent = `
+                    <div class="modal-content">
+                        <h4>${playlist.name}</h4>
+                        <p><strong>Path:</strong> ${playlist.path}</p>
+                        <p><strong>Size:</strong> ${playlist.size} bytes</p>
+                        <p><strong>Song Count:</strong> ${playlist.song_count}</p>
+                        <div class="playlist-songs">
+                            <h5>Songs:</h5>
+                            <ul class="collection">
+                `;
+                
+                if (playlist.songs && playlist.songs.length > 0) {
+                    playlist.songs.forEach(song => {
+                        modalContent += `
+                            <li class="collection-item">
+                                <div class="song-info">
+                                    <span class="song-title">${song.title}</span>
+                                    <span class="song-artist">by ${song.artist}</span>
+                                    <span class="song-album">from ${song.album}</span>
+                                </div>
+                            </li>
+                        `;
+                    });
+                } else {
+                    modalContent += '<li class="collection-item">No songs found in playlist</li>';
+                }
+                
+                modalContent += `
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                
+                // Create and show modal
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.innerHTML = modalContent;
+                document.body.appendChild(modal);
+                
+                const instance = M.Modal.init(modal);
+                instance.open();
+                
+                // Clean up modal when closed
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        instance.close();
+                        setTimeout(() => {
+                            document.body.removeChild(modal);
+                        }, 300);
+                    }
+                });
+            }
+
+            // Function to handle successful form submission
+            function handleSuccessfulSubmission() {
+                // Reset form
+                form.reset();
+                
+                // Reset UI state
+                isDownloading = false;
+                submitBtn.classList.remove('disabled');
+                progressContainer.style.display = 'none';
+                
+                // Refresh playlists after a short delay
+                setTimeout(() => {
+                    refreshPlaylists();
+                }, 1000);
+                
+                // Show success message
+                M.toast({html: 'Operation completed successfully!', classes: 'green'});
+            }
 
             // Form handling
             const form = document.querySelector('#playlist-form');
@@ -329,15 +634,25 @@
             let downloadCount = 0;
             let totalSongs = 0;
 
-            // Disable URL input if using download folder
-            useDownloadFolder.addEventListener('change', function() {
-                urlInput.disabled = this.checked;
-                if (this.checked) {
-                    urlInput.value = '';
-                }
-            });
-
+            // Handle form submission without download progress
             form.addEventListener('submit', function(event) {
+                // If using download folder, let the form submit normally
+                if (useDownloadFolder.checked) {
+                    // The form will submit and redirect, so we don't need to prevent default
+                    // But we can add a loading state
+                    submitBtn.innerHTML = '<span class="loading"></span> Processing...';
+                    submitBtn.disabled = true;
+                    
+                    // After a delay, refresh playlists (since the page will reload)
+                    setTimeout(() => {
+                        if (typeof refreshPlaylists === 'function') {
+                            refreshPlaylists();
+                        }
+                    }, 3000);
+                    return;
+                }
+                
+                // For URL-based downloads, prevent default and handle with EventSource
                 event.preventDefault();
                 if (isDownloading) {
                     M.toast({html: 'A download is already in progress.', classes: 'red'});
@@ -345,11 +660,23 @@
                 }
 
                 const url = urlInput.value;
-                const useDownload = useDownloadFolder.checked;
                 const addToExisting = addToExistingCheckbox.checked;
                 
-                if (!useDownload && !url) {
-                    M.toast({html: 'Please provide a playlist URL or select use download folder.', classes: 'orange'});
+                // If no URL is provided, automatically use download folder
+                if (!url) {
+                    useDownloadFolder.checked = true;
+                    urlInput.disabled = true;
+                    
+                    // Submit the form normally for download folder processing
+                    submitBtn.innerHTML = '<span class="loading"></span> Processing...';
+                    submitBtn.disabled = true;
+                    
+                    // After a delay, refresh playlists (since the page will reload)
+                    setTimeout(() => {
+                        if (typeof refreshPlaylists === 'function') {
+                            refreshPlaylists();
+                        }
+                    }, 3000);
                     return;
                 }
 
@@ -368,17 +695,12 @@
                 downloadCount = 0;
                 totalSongs = 0;
 
-                if (!useDownload) {
+                if (!useDownloadFolder.checked) {
                     progressContainer.style.display = 'block';
                     progressText.textContent = 'Starting download...';
                     progressFill.style.width = '0%';
                     songsDownloaded.textContent = '0';
                     progressPercentage.textContent = '0%';
-                }
-
-                if (useDownload) {
-                    form.submit();
-                    return;
                 }
 
                 if (source) {
@@ -433,6 +755,12 @@
                         songsDownloaded.textContent = downloadCount;
                         progressPercentage.textContent = Math.round(percentage) + '%';
                         progressText.textContent = `Processing song ${downloadCount}...`;
+                    } else if (data.includes('Completed') || data.includes('completed') || data.includes('Success')) {
+                        // Operation completed successfully
+                        progressText.textContent = 'Operation completed successfully!';
+                        setTimeout(() => {
+                            handleSuccessfulSubmission();
+                        }, 1000);
                     }
                 };
                 
@@ -441,12 +769,26 @@
                     source.close();
                     isDownloading = false;
                     submitBtn.classList.remove('disabled');
+                    
+                    // Submit the form and then refresh playlists
                     form.submit();
+                    // Refresh playlists after a short delay to allow backend processing
+                    setTimeout(() => {
+                        refreshPlaylists();
+                    }, 2000);
                 };
                 
                 source.onopen = function() {
                     progressText.textContent = 'Connected to download progress stream.';
                 };
+            });
+
+            // Disable URL input if using download folder
+            useDownloadFolder.addEventListener('change', function() {
+                urlInput.disabled = this.checked;
+                if (this.checked) {
+                    urlInput.value = '';
+                }
             });
         });
     </script>

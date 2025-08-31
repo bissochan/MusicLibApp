@@ -287,7 +287,11 @@ class PlaylistManager:
             self._add_key_value(root_dict, "Application Version", "string", "12.13.7.1")
             self._add_key_value(root_dict, "Features", "integer", "5")
             self._add_key_value(root_dict, "Show Content Ratings", "true")
-            self._add_key_value(root_dict, "Music Folder", "string", "file://localhost/C:/Users/lucab/Music/MusicLib/")
+            
+            # Use the actual music library directory from settings instead of hardcoded path
+            music_folder_uri = Path(self.music_lib_dir).as_uri().replace("file:///", "file://localhost/")
+            self._add_key_value(root_dict, "Music Folder", "string", music_folder_uri)
+            
             self._add_key_value(root_dict, "Library Persistent ID", "string", str(uuid.uuid4()).replace("-", "").upper()[:16])
 
             # Add Tracks section

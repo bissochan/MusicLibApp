@@ -232,11 +232,26 @@ class SettingsManager:
             from app.config import Settings
             default_settings = Settings()
             
+            # Get current directory paths to preserve them
+            current_paths = {
+                'root_folder': self.settings.root_folder,
+                'download_dir': self.settings.download_dir,
+                'playlist_dir': self.settings.playlist_dir,
+                'music_lib_dir': self.settings.music_lib_dir
+            }
+            
             for key in self.get_all_settings().keys():
                 if hasattr(default_settings, key):
-                    setattr(self.settings, key, getattr(default_settings, key))
+                    # Don't reset directory paths to empty strings
+                    if key not in ['root_folder', 'download_dir', 'playlist_dir', 'music_lib_dir']:
+                        setattr(self.settings, key, getattr(default_settings, key))
             
-            logging.info("Settings reset to defaults")
+            # Restore the directory paths
+            for path_key, path_value in current_paths.items():
+                if path_value:  # Only restore if path exists
+                    setattr(self.settings, path_key, path_value)
+            
+            logging.info("Settings reset to defaults (preserving directory paths)")
             return True
         except Exception as e:
             logging.error(f"Error resetting settings: {e}")

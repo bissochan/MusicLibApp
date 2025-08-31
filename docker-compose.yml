@@ -1,0 +1,17 @@
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./music_library:/app/music_library
+      - ./playlists:/app/playlists
+    environment:
+      - FLASK_APP=app/main.py
+      - FLASK_ENV=production
+      - DOWNLOAD_DIR=/app/downloads
+      - MUSIC_LIB_DIR=/app/music_library
+      - PLAYLIST_DIR=/app/playlists
+    restart: unless-stopped

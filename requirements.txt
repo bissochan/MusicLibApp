@@ -1,7 +1,10 @@
 flask
-sqlalchemy
+python-dotenv
 pytaglib
-flask-socketio
-pydantic-settings
-pytz
+PyYAML
 spotdl
+sqlalchemy
+wheel
+setuptools
+pytz
+pydantic_settings

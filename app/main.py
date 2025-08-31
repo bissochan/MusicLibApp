@@ -43,8 +43,11 @@ def search_library(query: str):
         current_music_lib_dir = settings.music_lib_dir
         music_path = Path(current_music_lib_dir)
         if not music_path.exists():
+            logging.warning(f"Music library directory does not exist: {current_music_lib_dir}")
             return results
             
+        logging.info(f"Searching for '{query}' in library: {current_music_lib_dir}")
+        
         for mp3_file in music_path.rglob("*.mp3"):
             try:
                 with taglib.File(str(mp3_file)) as file:
@@ -52,10 +55,16 @@ def search_library(query: str):
                     artist = file.tags.get("ARTIST", ["AAAnonymus"])[0]
                     album = file.tags.get("ALBUM", ["Singles"])[0]
                     
-                    # Check if query matches title, artist, or album
-                    if (query_lower in title.lower() or 
-                        query_lower in artist.lower() or 
-                        query_lower in album.lower()):
+                    # Check if query matches title, artist, or album (partial matching)
+                    title_lower = title.lower()
+                    artist_lower = artist.lower()
+                    album_lower = album.lower()
+                    
+                    if (query_lower in title_lower or 
+                        query_lower in artist_lower or 
+                        query_lower in album_lower):
+                        
+                        logging.debug(f"Match found: '{query_lower}' in '{title}' by '{artist}' from '{album}'")
                         results.append({
                             "title": title,
                             "artist": artist.replace("_", "/"),
@@ -66,7 +75,9 @@ def search_library(query: str):
             except Exception as e:
                 logging.warning(f"Failed to read metadata from {mp3_file}: {e}")
                 # Fallback: check filename
-                if query_lower in mp3_file.stem.lower():
+                filename_lower = mp3_file.stem.lower()
+                if query_lower in filename_lower:
+                    logging.debug(f"Match found by filename: '{query_lower}' in '{mp3_file.stem}'")
                     results.append({
                         "title": mp3_file.stem,
                         "artist": "Unknown",
@@ -79,6 +90,7 @@ def search_library(query: str):
     except Exception as e:
         logging.error(f"Error searching library: {e}")
     
+    logging.info(f"Search completed. Found {len(results)} results for query: '{query}'")
     return results
 
 def get_existing_playlists():

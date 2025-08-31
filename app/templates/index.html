@@ -93,16 +93,10 @@
                                         <select id="existing_playlist_name" name="existing_playlist_name">
                                             <option value="" disabled selected>Choose existing playlist</option>
                                             {% for playlist in existing_playlists %}
-                                            <option value="{{ playlist.name }}">{{ playlist.name }} ({{ playlist.size }} bytes)</option>
+                                            <option value="{{ playlist.name }}">{{ playlist.name }} ({{ playlist.song_count }} songs)</option>
                                             {% endfor %}
                                         </select>
                                         <label>Existing Playlist</label>
-                                    </div>
-                                    <div class="playlist-actions" style="margin-top: 10px;">
-                                        <button type="button" class="btn-small waves-effect waves-light" id="view-playlist-btn">
-                                            <i class="material-icons left">visibility</i>
-                                            View Details
-                                        </button>
                                     </div>
                                 </div>
                                 
@@ -327,7 +321,6 @@
             const submitText = document.querySelector('#submit-text');
             const playlistNameInput = document.querySelector('#playlist_name');
             const existingPlaylistSelect = document.querySelector('#existing_playlist_name');
-            const viewPlaylistBtn = document.querySelector('#view-playlist-btn');
 
             // Function to refresh playlists
             async function refreshPlaylists() {
@@ -466,7 +459,7 @@
                 playlists.forEach(playlist => {
                     const option = document.createElement('option');
                     option.value = playlist.name;
-                    option.textContent = `${playlist.name} (${playlist.size} bytes)`;
+                    option.textContent = `${playlist.name} (${playlist.song_count} songs)`;
                     select.appendChild(option);
                 });
                 
@@ -517,88 +510,6 @@
                 // Refresh playlists when the dropdown is clicked
                 refreshPlaylists();
             });
-
-            viewPlaylistBtn.addEventListener('click', function() {
-                const playlistName = existingPlaylistSelect.value;
-                if (playlistName) {
-                    viewPlaylistDetails(playlistName);
-                } else {
-                    M.toast({html: 'Please select a playlist to view details.', classes: 'orange'});
-                }
-            });
-
-            // Function to view playlist details
-            async function viewPlaylistDetails(playlistName) {
-                try {
-                    const response = await fetch(`/api/playlists/${encodeURIComponent(playlistName)}`);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    
-                    const playlist = await response.json();
-                    displayPlaylistDetails(playlist);
-                } catch (error) {
-                    console.error('Failed to get playlist details:', error);
-                    M.toast({html: 'Failed to get playlist details: ' + error.message, classes: 'red'});
-                }
-            }
-
-            // Function to display playlist details
-            function displayPlaylistDetails(playlist) {
-                // Create modal content
-                let modalContent = `
-                    <div class="modal-content">
-                        <h4>${playlist.name}</h4>
-                        <p><strong>Path:</strong> ${playlist.path}</p>
-                        <p><strong>Size:</strong> ${playlist.size} bytes</p>
-                        <p><strong>Song Count:</strong> ${playlist.song_count}</p>
-                        <div class="playlist-songs">
-                            <h5>Songs:</h5>
-                            <ul class="collection">
-                `;
-                
-                if (playlist.songs && playlist.songs.length > 0) {
-                    playlist.songs.forEach(song => {
-                        modalContent += `
-                            <li class="collection-item">
-                                <div class="song-info">
-                                    <span class="song-title">${song.title}</span>
-                                    <span class="song-artist">by ${song.artist}</span>
-                                    <span class="song-album">from ${song.album}</span>
-                                </div>
-                            </li>
-                        `;
-                    });
-                } else {
-                    modalContent += '<li class="collection-item">No songs found in playlist</li>';
-                }
-                
-                modalContent += `
-                            </ul>
-                        </div>
-                    </div>
-                `;
-                
-                // Create and show modal
-                const modal = document.createElement('div');
-                modal.className = 'modal';
-                modal.innerHTML = modalContent;
-                document.body.appendChild(modal);
-                
-                const instance = M.Modal.init(modal);
-                instance.open();
-                
-                // Clean up modal when closed
-                modal.addEventListener('click', function(e) {
-                    if (e.target === modal) {
-                        instance.close();
-                        setTimeout(() => {
-                            document.body.removeChild(modal);
-                        }, 300);
-                    }
-                });
-            }
 
             // Function to handle successful form submission
             function handleSuccessfulSubmission() {

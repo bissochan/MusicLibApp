@@ -25,15 +25,25 @@ class PlaylistManager:
         playlists = []
         try:
             for file in Path(self.playlist_dir).glob("*.xml"):
+                # Get song count instead of file size
+                song_count = self.get_playlist_song_count(str(file))
                 playlists.append({
                     'name': file.stem,
                     'path': str(file),
-                    'size': file.stat().st_size
+                    'song_count': song_count
                 })
             logging.info(f"Found {len(playlists)} existing playlists")
         except Exception as e:
             logging.error(f"Failed to get existing playlists: {e}")
         return playlists
+
+    def get_playlist_song_count(self, playlist_path: str) -> int:
+        """Get the number of songs in a playlist."""
+        try:
+            return self.count_playlist_songs(playlist_path)
+        except Exception as e:
+            logging.error(f"Failed to get song count for playlist {playlist_path}: {e}")
+            return 0
 
     def read_playlist_songs(self, playlist_path: str):
         """Read songs from an existing playlist XML file."""
@@ -83,6 +93,34 @@ class PlaylistManager:
         
         return songs
 
+    def count_playlist_songs(self, playlist_path: str) -> int:
+        """Count the number of songs in a playlist XML file more reliably."""
+        try:
+            tree = ET.parse(playlist_path)
+            root = tree.getroot()
+            
+            # Look for track IDs in the Tracks section
+            track_count = 0
+            
+            # Find all key elements that contain numeric track IDs
+            for elem in root.iter("key"):
+                try:
+                    # Check if this key is a track ID (number)
+                    track_id = int(elem.text)
+                    # If it's a reasonable track ID (not too large), count it
+                    if 1 <= track_id <= 99999:
+                        track_count += 1
+                except ValueError:
+                    # Not a track ID, skip
+                    continue
+            
+            logging.info(f"Counted {track_count} tracks in playlist {playlist_path}")
+            return track_count
+            
+        except Exception as e:
+            logging.error(f"Failed to count songs in playlist {playlist_path}: {e}")
+            return 0
+
     def _convert_song_info(self, song_info: dict):
         """Convert song info from XML format to standard format."""
         try:
@@ -108,6 +146,9 @@ class PlaylistManager:
         new_artist = new_song.get("artist", "").lower().strip()
         new_album = new_song.get("album", "").lower().strip()
         
+        # Log the song we're checking
+        logging.debug(f"Checking for duplicates: '{new_title}' by '{new_artist}' from '{new_album}'")
+        
         for existing_song in existing_songs:
             existing_title = existing_song.get("title", "").lower().strip()
             existing_artist = existing_song.get("artist", "").lower().strip()
@@ -117,8 +158,10 @@ class PlaylistManager:
             if (new_title == existing_title and 
                 new_artist == existing_artist and 
                 new_album == existing_album):
+                logging.debug(f"Duplicate found: '{new_title}' by '{new_artist}' from '{new_album}'")
                 return True
         
+        logging.debug(f"No duplicate found for: '{new_title}' by '{new_artist}' from '{new_album}'")
         return False
 
     def add_songs_to_existing_playlist(self, songs: list, playlist_name: str):
@@ -138,15 +181,18 @@ class PlaylistManager:
             new_songs = []
             duplicates_found = 0
             
+            logging.info(f"Checking {len(songs)} new songs for duplicates against {len(existing_songs)} existing songs")
+            
             for song in songs:
                 if self.is_song_duplicate(song, existing_songs):
-                    logging.info(f"Duplicate found: {song.get('title', 'Unknown')} by {song.get('artist', 'Unknown')}")
+                    logging.info(f"Duplicate found: '{song.get('title', 'Unknown')}' by '{song.get('artist', 'Unknown')}' from '{song.get('album', 'Unknown')}'")
                     duplicates_found += 1
                 else:
+                    logging.info(f"Adding new song: '{song.get('title', 'Unknown')}' by '{song.get('artist', 'Unknown')}' from '{song.get('album', 'Unknown')}'")
                     new_songs.append(song)
             
             if not new_songs:
-                logging.info(f"No new songs to add to playlist {playlist_name} (all were duplicates)")
+                logging.info(f"No new songs to add to playlist {playlist_name} (all {len(songs)} were duplicates)")
                 return {
                     'success': True,
                     'message': f"No new songs added to '{playlist_name}' (all {len(songs)} songs were duplicates)",
@@ -158,7 +204,7 @@ class PlaylistManager:
             self.update_playlist_with_new_songs(playlist_path, existing_songs, new_songs, playlist_name)
             
             total_songs = len(existing_songs) + len(new_songs)
-            logging.info(f"Added {len(new_songs)} new songs to playlist {playlist_name}")
+            logging.info(f"Successfully added {len(new_songs)} new songs to playlist {playlist_name}. Total songs now: {total_songs}")
             return {
                 'success': True,
                 'message': f"Added {len(new_songs)} new songs to '{playlist_name}' ({duplicates_found} duplicates skipped). Total songs: {total_songs}",
